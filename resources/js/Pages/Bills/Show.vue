@@ -9,7 +9,7 @@ const props = defineProps({
 const formatPrice = (price) => {
     return new Intl.NumberFormat('cs-CZ', {
         style: 'currency',
-        currency: 'CZK'
+        currency: 'CZK',
     }).format(price);
 };
 
@@ -19,20 +19,20 @@ const formatDate = (date) => {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     });
 };
 
 const getStatusColor = (status) => {
     switch (status) {
         case 'completed':
-            return 'bg-green-100 text-green-800';
+            return 'bg-emerald-100 text-emerald-700';
         case 'open':
-            return 'bg-yellow-100 text-yellow-800';
+            return 'bg-amber-100 text-amber-700';
         case 'cancelled':
-            return 'bg-red-100 text-red-800';
+            return 'bg-rose-100 text-rose-700';
         default:
-            return 'bg-gray-100 text-gray-800';
+            return 'bg-slate-100 text-slate-700';
     }
 };
 
@@ -46,142 +46,204 @@ const printBill = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Bill Details
-            </h2>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-2xl font-semibold text-slate-900">Bill {{ bill.transaction_id }}</h2>
+                    <p class="mt-1 text-sm text-slate-500">Detailed transaction breakdown, customer info, and totals.</p>
+                </div>
+                <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                    <Link
+                        :href="route('bills.index')"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-200 hover:-translate-y-px hover:bg-slate-50"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Back to Bills
+                    </Link>
+                    <button
+                        type="button"
+                        @click="printBill"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                        </svg>
+                        Print Bill
+                    </button>
+                </div>
+            </div>
         </template>
 
         <div class="py-6">
-            <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                <div class="bg-white shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <div class="mb-6 flex justify-between items-start">
-                            <div>
-                                <Link
-                                    :href="route('bills.index')"
-                                    class="text-blue-600 hover:text-blue-800"
+            <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
+                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div class="grid gap-4 px-6 py-5 md:grid-cols-3 md:items-center">
+                        <div class="md:col-span-2">
+                            <h1 class="text-xl font-semibold text-slate-900">Transaction {{ bill.transaction_id }}</h1>
+                            <p class="mt-1 text-sm text-slate-500">{{ formatDate(bill.created_at) }}</p>
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                <span
+                                    :class="getStatusColor(bill.status)"
+                                    class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
                                 >
-                                    ← Back to Bills
-                                </Link>
-                            </div>
-                            <div class="flex space-x-3">
-                                <button
-                                    @click="printBill"
-                                    class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                >
-                                    Print Bill
-                                </button>
+                                    {{ bill.status }}
+                                </span>
+                                <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                                    Customer: {{ bill.customer?.name || 'No customer' }}
+                                </span>
                             </div>
                         </div>
-
-                        <!-- Bill Header -->
-                        <div class="mb-8 border-b pb-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Transaction Information</h3>
-                                    <dl class="space-y-1">
-                                        <div class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Transaction ID:</dt>
-                                            <dd class="text-sm text-gray-900">{{ bill.transaction_id }}</dd>
-                                        </div>
-                                        <div class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Date:</dt>
-                                            <dd class="text-sm text-gray-900">{{ formatDate(bill.created_at) }}</dd>
-                                        </div>
-                                        <div class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Status:</dt>
-                                            <dd>
-                                                <span
-                                                    :class="getStatusColor(bill.status)"
-                                                    class="px-2 py-1 text-xs rounded-full capitalize"
-                                                >
-                                                    {{ bill.status }}
-                                                </span>
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Customer Information</h3>
-                                    <dl class="space-y-1">
-                                        <div class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Name:</dt>
-                                            <dd class="text-sm text-gray-900">{{ bill.customer?.name || 'No customer' }}</dd>
-                                        </div>
-                                        <div v-if="bill.customer?.email" class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Email:</dt>
-                                            <dd class="text-sm text-gray-900">{{ bill.customer.email }}</dd>
-                                        </div>
-                                        <div v-if="bill.customer?.phone" class="flex">
-                                            <dt class="text-sm font-medium text-gray-600 w-32">Phone:</dt>
-                                            <dd class="text-sm text-gray-900">{{ bill.customer.phone }}</dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Bill Items -->
-                        <div class="mb-8">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Items</h3>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm">
-                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left">#</th>
-                                            <th class="px-4 py-3 text-left">Product</th>
-                                            <th class="px-4 py-3 text-center">Quantity</th>
-                                            <th class="px-4 py-3 text-right">Unit Price</th>
-                                            <th class="px-4 py-3 text-right">VAT Rate</th>
-                                            <th class="px-4 py-3 text-right">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr
-                                            v-for="(item, index) in bill.transaction_items"
-                                            :key="item.id"
-                                            class="border-b hover:bg-gray-50"
-                                        >
-                                            <td class="px-4 py-3">{{ index + 1 }}</td>
-                                            <td class="px-4 py-3 font-medium">{{ item.product.name }}</td>
-                                            <td class="px-4 py-3 text-center">{{ item.quantity }}</td>
-                                            <td class="px-4 py-3 text-right">{{ formatPrice(item.unit_price) }}</td>
-                                            <td class="px-4 py-3 text-right">{{ item.vat_rate }}%</td>
-                                            <td class="px-4 py-3 text-right font-semibold">{{ formatPrice(item.total) }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Bill Summary -->
-                        <div class="border-t pt-6">
-                            <div class="max-w-xs ml-auto">
-                                <dl class="space-y-2">
-                                    <div class="flex justify-between">
-                                        <dt class="text-sm text-gray-600">Subtotal:</dt>
-                                        <dd class="text-sm text-gray-900">{{ formatPrice(bill.subtotal) }}</dd>
-                                    </div>
-                                    <div v-if="bill.discount > 0" class="flex justify-between">
-                                        <dt class="text-sm text-gray-600">Discount:</dt>
-                                        <dd class="text-sm text-red-600">-{{ formatPrice(bill.discount) }}</dd>
-                                    </div>
-                                    <div class="flex justify-between pt-2 border-t">
-                                        <dt class="text-lg font-semibold text-gray-900">Total:</dt>
-                                        <dd class="text-lg font-bold text-gray-900">{{ formatPrice(bill.total) }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-                        </div>
-
-                        <!-- Notes -->
-                        <div v-if="bill.notes" class="mt-6 border-t pt-6">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Notes</h3>
-                            <p class="text-sm text-gray-600">{{ bill.notes }}</p>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-right">
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Total</p>
+                            <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">Subtotal {{ formatPrice(bill.subtotal) }}</p>
                         </div>
                     </div>
-                </div>
+                </section>
+
+                <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                            <h3 class="text-base font-semibold text-slate-800">Transaction Details</h3>
+                        </div>
+                        <dl class="space-y-4 px-6 py-5 text-sm">
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                                <dt class="text-slate-500">Transaction ID</dt>
+                                <dd class="font-medium text-slate-900">{{ bill.transaction_id }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                                <dt class="text-slate-500">Date</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ formatDate(bill.created_at) }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Status</dt>
+                                <dd>
+                                    <span
+                                        :class="getStatusColor(bill.status)"
+                                        class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
+                                    >
+                                        {{ bill.status }}
+                                    </span>
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                            <h3 class="text-base font-semibold text-slate-800">Customer Details</h3>
+                        </div>
+                        <dl class="space-y-4 px-6 py-5 text-sm">
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                                <dt class="text-slate-500">Name</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.name || 'No customer' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                                <dt class="text-slate-500">Email</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.email || 'Not provided' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Phone</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.phone || 'Not provided' }}</dd>
+                            </div>
+                        </dl>
+                    </article>
+                </section>
+
+                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Items</h3>
+                    </div>
+                    <div class="hidden overflow-x-auto lg:block">
+                        <table class="min-w-full border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50">
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">#</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
+                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Qty</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Unit Price</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">VAT</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(item, index) in bill.transaction_items"
+                                    :key="item.id"
+                                    class="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
+                                >
+                                    <td class="px-5 py-4 text-sm text-slate-700">{{ index + 1 }}</td>
+                                    <td class="px-5 py-4 text-sm font-medium text-slate-900">{{ item.product.name }}</td>
+                                    <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.quantity }}</td>
+                                    <td class="px-5 py-4 text-right text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</td>
+                                    <td class="px-5 py-4 text-right text-sm text-slate-700">{{ item.vat_rate }}%</td>
+                                    <td class="px-5 py-4 text-right text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="space-y-3 p-4 lg:hidden">
+                        <article
+                            v-for="(item, index) in bill.transaction_items"
+                            :key="item.id"
+                            class="rounded-lg border border-slate-200 p-4"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-slate-900">{{ item.product.name }}</h4>
+                                    <p class="mt-1 text-xs text-slate-500">Item #{{ index + 1 }}</p>
+                                </div>
+                                <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                            </div>
+                            <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
+                                <div>
+                                    <p class="text-slate-500">Qty</p>
+                                    <p class="mt-1 font-medium">{{ item.quantity }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500">Unit</p>
+                                    <p class="mt-1 font-medium">{{ formatPrice(item.unit_price) }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500">VAT</p>
+                                    <p class="mt-1 font-medium">{{ item.vat_rate }}%</p>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Summary</h3>
+                    </div>
+                    <div class="px-6 py-5">
+                        <dl class="ml-auto max-w-sm space-y-3 text-sm">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <dt class="text-slate-500">Subtotal</dt>
+                                <dd class="font-medium text-slate-900">{{ formatPrice(bill.subtotal) }}</dd>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <dt class="text-slate-500">Discount</dt>
+                                <dd :class="bill.discount > 0 ? 'text-rose-600' : 'text-slate-900'" class="font-medium">
+                                    {{ bill.discount > 0 ? `-${formatPrice(bill.discount)}` : formatPrice(0) }}
+                                </dd>
+                            </div>
+                            <div class="flex items-center justify-between pt-1">
+                                <dt class="text-base font-semibold text-slate-900">Total</dt>
+                                <dd class="text-base font-semibold text-slate-900">{{ formatPrice(bill.total) }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </section>
+
+                <section v-if="bill.notes" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Notes</h3>
+                    </div>
+                    <p class="px-6 py-5 text-sm text-slate-700">{{ bill.notes }}</p>
+                </section>
             </div>
         </div>
     </AuthenticatedLayout>

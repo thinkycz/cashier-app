@@ -37,7 +37,10 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Products/Create');
+        return Inertia::render('Products/Form', [
+            'mode' => 'create',
+            'product' => null,
+        ]);
     }
 
     /**
@@ -47,6 +50,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'short_name' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'ean' => 'nullable|string|max:255|unique:products,ean',
             'vat_rate' => 'required|numeric|min:0|max:100',
@@ -76,7 +80,8 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        return Inertia::render('Products/Edit', [
+        return Inertia::render('Products/Form', [
+            'mode' => 'edit',
             'product' => $product,
         ]);
     }
@@ -88,6 +93,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'short_name' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'ean' => 'nullable|string|max:255|unique:products,ean,' . $product->id,
             'vat_rate' => 'required|numeric|min:0|max:100',

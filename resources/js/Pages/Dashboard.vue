@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useCartStore } from '@/stores/cart';
 
 const cart = useCartStore();
@@ -20,10 +20,6 @@ const filteredProducts = computed(() => {
 
     const query = searchQuery.value.toLowerCase();
     return props.products.filter((product) => {
-        if (searchMode.value === 'category') {
-            return product.category?.toLowerCase().includes(query);
-        }
-
         if (searchMode.value === 'ean') {
             return product.ean?.toLowerCase().includes(query);
         }
@@ -33,7 +29,7 @@ const filteredProducts = computed(() => {
 });
 
 const activeReceiptLabel = computed(() => {
-    return cart.currentTransaction?.transaction_id || 'UC2602214523';
+    return cart.currentTransaction?.transaction_id || 'No active receipt';
 });
 
 const addToCart = (product) => {
@@ -52,7 +48,7 @@ const formatVat = (vatRate) => {
 };
 
 const productSubtitle = (product) => {
-    return product.description || product.category || '';
+    return product.short_name || product.description || '';
 };
 
 const createNewTransaction = () => {
@@ -74,653 +70,235 @@ const selectTransaction = (transaction) => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <div class="pos-page py-6">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 gap-4 xl:grid-cols-[38%_62%]">
-                    <section class="pos-card left-panel">
-                        <div class="total-bar">
-                            <span class="total-label">Celkem</span>
-                            <span class="total-amount">{{ formatPrice(cart.total) }}</span>
-                        </div>
+        <template #header>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-2xl font-semibold text-slate-900">Dashboard</h2>
+                    <p class="mt-1 text-sm text-slate-500">Run checkout, manage open receipts, and quickly add products.</p>
+                </div>
+                <div class="text-sm text-slate-500 sm:text-right">
+                    {{ formatPrice(cart.total) }} in cart
+                </div>
+            </div>
+        </template>
 
-                        <div class="left-input-wrap">
-                            <div class="left-fake-select">
-                                <span class="left-fake-select-chevron">⌄</span>
+        <div class="py-6">
+            <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
+                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 text-white">
+                        <p class="text-xs uppercase tracking-wide text-slate-200">Current Total</p>
+                        <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
+                    </div>
+
+                    <div class="space-y-4 p-4">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Packages</label>
+                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
                             </div>
-
-                            <div class="left-inline-grid">
-                                <div>
-                                    <label class="left-inline-label">Balíků</label>
-                                    <input type="number" min="1" value="1" class="left-inline-input" />
-                                </div>
-                                <div>
-                                    <label class="left-inline-label">Počet</label>
-                                    <input type="number" min="1" value="1" class="left-inline-input" />
-                                </div>
-                                <div>
-                                    <label class="left-inline-label">Cena</label>
-                                    <input type="number" min="0" step="0.01" class="left-inline-input" />
-                                </div>
-                                <button type="button" class="left-check-btn" aria-label="Potvrdit položku">
-                                    ✓
-                                </button>
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Quantity</label>
+                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
                             </div>
                         </div>
 
-                        <div class="left-table-head">
-                            <span>#</span>
-                            <span>POČET</span>
-                            <span>CENA ZA MJ</span>
-                            <span>CELKEM</span>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium text-slate-600">Manual Price</label>
+                            <input type="number" min="0" step="0.01" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
                         </div>
 
-                        <div class="left-table-body">
-                            <div v-if="cart.items.length === 0" class="left-empty"></div>
-
+                        <div class="overflow-hidden rounded-md border border-slate-200">
+                            <div class="grid grid-cols-4 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span>#</span>
+                                <span>Qty</span>
+                                <span>Unit</span>
+                                <span class="text-right">Total</span>
+                            </div>
+                            <div v-if="cart.items.length === 0" class="px-3 py-8 text-center text-sm text-slate-500">
+                                Cart is empty
+                            </div>
                             <div
                                 v-for="(item, index) in cart.items"
                                 :key="item.product.id"
-                                class="left-item-row"
+                                class="grid grid-cols-4 border-t border-slate-100 px-3 py-2 text-sm text-slate-700"
                             >
                                 <span>{{ index + 1 }}</span>
                                 <span>{{ item.quantity }}</span>
                                 <span>{{ formatPrice(item.unit_price) }}</span>
-                                <span class="left-row-total">{{ formatPrice(item.total) }}</span>
+                                <span class="text-right font-medium text-slate-900">{{ formatPrice(item.total) }}</span>
                             </div>
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    <section class="pos-card right-panel">
-                        <div class="right-topbar">
+                <section class="space-y-4">
+                    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <h2 class="receipt-id">{{ activeReceiptLabel }}</h2>
-                                <p class="receipt-customer">{{ cart.selectedCustomer?.name || 'Žádný zákazník' }}</p>
+                                <h3 class="text-xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h3>
+                                <p class="mt-1 text-sm text-slate-500">{{ cart.selectedCustomer?.name || 'No customer selected' }}</p>
                             </div>
-
-                            <div class="right-actions">
-                                <button type="button" class="btn btn-secondary">Sleva a přirážka</button>
-                                <button type="button" class="btn btn-secondary">Vybrat zákazníka</button>
-                                <button type="button" class="btn btn-primary" @click="createNewTransaction">
-                                    Nová účtenka
-                                </button>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Discount / Surcharge</button>
+                                <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Select Customer</button>
+                                <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700" @click="createNewTransaction">New Receipt</button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="right-section">
-                            <h3 class="section-title">OTEVŘENÉ ÚČTENKY</h3>
+                    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+                        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Open Receipts</h4>
+                        </div>
+                        <div class="space-y-2 p-4">
+                            <button
+                                v-for="transaction in openTransactions"
+                                :key="transaction.id"
+                                type="button"
+                                class="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:bg-slate-50"
+                                @click="selectTransaction(transaction)"
+                            >
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</span>
+                                    <span class="block text-xs text-slate-500">{{ formatPrice(transaction.total) }}</span>
+                                </span>
+                                <span class="text-xs text-slate-500">Open</span>
+                            </button>
+                            <p v-if="openTransactions.length === 0" class="text-sm text-slate-500">No open receipts.</p>
+                        </div>
+                    </div>
 
-                            <div class="open-list">
-                                <button
-                                    v-for="transaction in openTransactions"
-                                    :key="transaction.id"
-                                    type="button"
-                                    class="open-item"
-                                    @click="selectTransaction(transaction)"
-                                >
-                                    <span class="open-item-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M8 3H13L18 8V20H8V3Z" stroke="currentColor" stroke-width="1.7" />
-                                            <path d="M13 3V8H18" stroke="currentColor" stroke-width="1.7" />
-                                        </svg>
-                                    </span>
-                                    <span class="open-item-body">
-                                        <span class="open-item-id">{{ transaction.transaction_id }}</span>
-                                        <span class="open-item-total">{{ formatPrice(transaction.total) }}</span>
-                                    </span>
-                                    <span class="open-item-more">⋮</span>
-                                </button>
-
-                                <p v-if="openTransactions.length === 0" class="no-open-items">Žádné otevřené účtenky</p>
-                            </div>
+                    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+                        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                            <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Find Product</h4>
                         </div>
 
-                        <div class="right-section">
-                            <h3 class="section-title">NAJÍT PRODUKT</h3>
-
-                            <div class="search-row">
-                                <div class="search-wrap">
+                        <div class="space-y-4 p-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-center">
+                                <div class="relative flex-1">
+                                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
                                     <input
                                         v-model="searchQuery"
                                         type="text"
-                                        placeholder=""
-                                        class="search-input"
+                                        placeholder="Search products"
+                                        class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
                                     />
-                                    <div class="search-tabs" role="group" aria-label="Režim hledání">
-                                        <button
-                                            type="button"
-                                            class="tab-btn"
-                                            :class="{ active: searchMode === 'category' }"
-                                            @click="searchMode = 'category'"
-                                        >
-                                            CAT
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="tab-btn"
-                                            :class="{ active: searchMode === 'ean' }"
-                                            @click="searchMode = 'ean'"
-                                        >
-                                            EAN
-                                        </button>
-                                    </div>
                                 </div>
 
-                                <Link :href="route('products.create')" class="btn btn-primary create-btn">
-                                    Vytvořit produkt
+                                <div class="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
+                                    <button
+                                        type="button"
+                                        class="rounded px-3 py-1.5 text-xs font-medium"
+                                        :class="searchMode === 'name' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'"
+                                        @click="searchMode = 'name'"
+                                    >
+                                        Name
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded px-3 py-1.5 text-xs font-medium"
+                                        :class="searchMode === 'ean' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'"
+                                        @click="searchMode = 'ean'"
+                                    >
+                                        EAN
+                                    </button>
+                                </div>
+
+                                <Link
+                                    :href="route('products.create')"
+                                    class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
+                                >
+                                    Create Product
                                 </Link>
                             </div>
-                        </div>
 
-                        <div class="product-table-wrap">
-                            <table class="product-table">
-                                <thead>
-                                    <tr>
-                                        <th>PRODUKT</th>
-                                        <th>CAT</th>
-                                        <th>EAN</th>
-                                        <th>SAZBA DPH</th>
-                                        <th>CENA</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="product in filteredProducts" :key="product.id">
-                                        <td class="product-name-cell">
-                                            <div class="product-name">{{ product.name }}</div>
-                                            <div class="product-subtitle">{{ productSubtitle(product) }}</div>
-                                        </td>
-                                        <td>{{ product.category || '' }}</td>
-                                        <td>{{ product.ean || '' }}</td>
-                                        <td>{{ formatVat(product.vat_rate) }}</td>
-                                        <td>
-                                            <div>{{ formatPrice(product.price) }}</div>
-                                            <div class="muted-sub">{{ formatPrice(product.price) }}</div>
-                                        </td>
-                                        <td class="action-cell">
-                                            <button
-                                                type="button"
-                                                class="add-link"
-                                                @click="addToCart(product)"
-                                            >
-                                                Přidat
-                                            </button>
-                                        </td>
-                                    </tr>
+                            <div class="hidden overflow-x-auto lg:block">
+                                <table class="min-w-full border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50">
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">EAN</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">VAT</th>
+                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Price</th>
+                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="product in filteredProducts"
+                                            :key="product.id"
+                                            class="border-t border-slate-100 transition-colors hover:bg-slate-50"
+                                        >
+                                            <td class="px-4 py-3 align-top">
+                                                <p class="text-sm font-semibold text-slate-900">{{ product.name }}</p>
+                                                <p v-if="productSubtitle(product)" class="mt-0.5 text-xs text-slate-500">{{ productSubtitle(product) }}</p>
+                                            </td>
+                                            <td class="px-4 py-3 text-xs font-mono text-slate-600">{{ product.ean || '-' }}</td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                                                    {{ formatVat(product.vat_rate) }}%
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                <p class="text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
+                                                <p class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100"
+                                                    @click="addToCart(product)"
+                                                >
+                                                    Add
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="filteredProducts.length === 0">
+                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">No products found.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                    <tr v-if="filteredProducts.length === 0">
-                                        <td colspan="6" class="empty-products">Žádné produkty</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div class="space-y-3 lg:hidden">
+                                <article v-for="product in filteredProducts" :key="product.id" class="rounded-lg border border-slate-200 p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h5 class="text-sm font-semibold text-slate-900">{{ product.name }}</h5>
+                                            <p v-if="productSubtitle(product)" class="mt-1 text-xs text-slate-500">{{ productSubtitle(product) }}</p>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
+                                    </div>
+                                    <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
+                                        <div>
+                                            <p class="text-slate-500">EAN</p>
+                                            <p class="mt-1 font-mono">{{ product.ean || '-' }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-500">VAT</p>
+                                            <p class="mt-1 font-medium">{{ formatVat(product.vat_rate) }}%</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-500">Price</p>
+                                            <p class="mt-1 font-medium text-slate-900">{{ formatPrice(product.price) }}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700"
+                                        @click="addToCart(product)"
+                                    >
+                                        Add to Cart
+                                    </button>
+                                </article>
+                                <p v-if="filteredProducts.length === 0" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">No products found.</p>
+                            </div>
                         </div>
-
-                        <div class="table-footer">
-                            <button type="button" class="more-link">Další</button>
-                        </div>
-                    </section>
-                </div>
+                    </div>
+                </section>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-.pos-page {
-    --panel-bg: #f8fafc;
-    --panel-border: #d8dee8;
-    --muted-text: #6b7280;
-    --heading-text: #5f6979;
-    --body-text: #1f2937;
-    --primary: #0d8ad5;
-    --primary-hover: #0a79bb;
-    --dark-total: #1d2b40;
-}
-
-.pos-card {
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(24, 39, 75, 0.08);
-    overflow: hidden;
-}
-
-.left-panel {
-    min-height: 760px;
-    padding: 12px;
-}
-
-.total-bar {
-    height: 72px;
-    background: linear-gradient(120deg, #203147, var(--dark-total));
-    color: #fff;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-}
-
-.total-label {
-    font-size: 1.05rem;
-    line-height: 1;
-}
-
-.total-amount {
-    font-size: 2.2rem;
-    font-weight: 500;
-    line-height: 1;
-    letter-spacing: 0.02em;
-}
-
-.left-input-wrap {
-    margin-top: 12px;
-}
-
-.left-fake-select {
-    height: 44px;
-    background: #fff;
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    position: relative;
-}
-
-.left-fake-select-chevron {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #9aa2b1;
-    font-size: 16px;
-}
-
-.left-inline-grid {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 44px;
-    gap: 8px;
-    align-items: end;
-}
-
-.left-inline-label {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 0.95rem;
-    color: #4f5969;
-}
-
-.left-inline-input {
-    width: 100%;
-    height: 44px;
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    background: #fff;
-    font-size: 1.05rem;
-    color: #1e293b;
-    padding: 8px 10px;
-}
-
-.left-check-btn {
-    height: 44px;
-    border: 0;
-    border-radius: 8px;
-    background: var(--primary);
-    color: #fff;
-    font-size: 1.1rem;
-    cursor: pointer;
-}
-
-.left-check-btn:hover {
-    background: var(--primary-hover);
-}
-
-.left-table-head {
-    margin-top: 12px;
-    border-top: 1px solid var(--panel-border);
-    border-bottom: 1px solid var(--panel-border);
-    height: 44px;
-    display: grid;
-    grid-template-columns: 0.5fr 1fr 1.2fr 1fr;
-    align-items: center;
-    color: #748093;
-    font-size: 0.78rem;
-    letter-spacing: 0.03em;
-    padding: 0 10px;
-}
-
-.left-table-body {
-    min-height: 520px;
-    background: #fbfcfd;
-}
-
-.left-empty {
-    min-height: 520px;
-}
-
-.left-item-row {
-    display: grid;
-    grid-template-columns: 0.5fr 1fr 1.2fr 1fr;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #e2e7ee;
-    font-size: 0.88rem;
-    color: #2b3545;
-}
-
-.left-row-total {
-    text-align: right;
-}
-
-.right-panel {
-    min-height: 760px;
-}
-
-.right-topbar {
-    border-bottom: 1px solid var(--panel-border);
-    padding: 14px 16px;
-    display: flex;
-    gap: 14px;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.receipt-id {
-    font-size: 2rem;
-    color: #2c3646;
-    line-height: 1.1;
-    margin: 0;
-}
-
-.receipt-customer {
-    margin-top: 2px;
-    color: #778194;
-    font-size: 1.2rem;
-}
-
-.right-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.btn {
-    height: 44px;
-    padding: 0 16px;
-    border-radius: 8px;
-    border: 1px solid var(--panel-border);
-    font-size: 0.95rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-}
-
-.btn-secondary {
-    background: #f2f4f8;
-    color: #626e80;
-}
-
-.btn-primary {
-    border-color: transparent;
-    background: var(--primary);
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background: var(--primary-hover);
-}
-
-.right-section {
-    border-bottom: 1px solid var(--panel-border);
-    padding: 14px 16px 16px;
-}
-
-.section-title {
-    font-size: 1.1rem;
-    letter-spacing: 0.04em;
-    color: #707a8b;
-    margin-bottom: 10px;
-}
-
-.open-list {
-    max-width: 360px;
-}
-
-.open-item {
-    width: 100%;
-    height: 72px;
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    background: #fff;
-    display: flex;
-    align-items: stretch;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.open-item-icon {
-    width: 62px;
-    background: var(--primary);
-    color: #fff;
-    display: grid;
-    place-items: center;
-}
-
-.open-item-icon svg {
-    width: 20px;
-    height: 20px;
-}
-
-.open-item-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 0 16px;
-}
-
-.open-item-id {
-    font-size: 1.25rem;
-    color: #2f3a4b;
-}
-
-.open-item-total {
-    font-size: 1rem;
-    color: #6a7486;
-    margin-top: 1px;
-}
-
-.open-item-more {
-    width: 40px;
-    color: #9aa2b1;
-    font-size: 1.1rem;
-    display: grid;
-    place-items: center;
-}
-
-.no-open-items {
-    color: #80899b;
-    font-size: 0.9rem;
-}
-
-.search-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.search-wrap {
-    flex: 1;
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    background: #fff;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-}
-
-.search-input {
-    flex: 1;
-    height: 100%;
-    border: 0;
-    padding: 0 10px;
-    font-size: 0.95rem;
-    color: #2d3748;
-}
-
-.search-input:focus {
-    outline: none;
-}
-
-.search-tabs {
-    display: flex;
-    gap: 2px;
-    margin-right: 6px;
-}
-
-.tab-btn {
-    height: 34px;
-    min-width: 52px;
-    border: 1px solid var(--panel-border);
-    border-radius: 6px;
-    background: #f4f6fa;
-    color: #8a94a5;
-    font-size: 0.8rem;
-    padding: 0 10px;
-}
-
-.tab-btn.active {
-    background: #e7f4fd;
-    border-color: #9acdec;
-    color: #3179a8;
-}
-
-.create-btn {
-    text-decoration: none;
-    min-width: 170px;
-}
-
-.product-table-wrap {
-    overflow-x: auto;
-}
-
-.product-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 720px;
-}
-
-.product-table thead th {
-    height: 52px;
-    border-bottom: 1px solid var(--panel-border);
-    color: #707a8b;
-    font-size: 0.82rem;
-    font-weight: 500;
-    text-align: left;
-    letter-spacing: 0.03em;
-    padding: 0 16px;
-}
-
-.product-table tbody td {
-    border-bottom: 1px solid #dde3eb;
-    color: #4b5568;
-    font-size: 1rem;
-    padding: 10px 16px;
-    vertical-align: middle;
-}
-
-.product-name {
-    color: var(--body-text);
-    font-size: 1.15rem;
-}
-
-.product-subtitle {
-    margin-top: 2px;
-    color: #5f6979;
-    font-size: 1rem;
-}
-
-.muted-sub {
-    color: #666f80;
-    font-size: 0.95rem;
-}
-
-.action-cell {
-    text-align: right;
-}
-
-.add-link {
-    border: 0;
-    background: transparent;
-    color: var(--primary);
-    font-size: 1.1rem;
-    cursor: pointer;
-    padding: 0;
-}
-
-.add-link:hover {
-    text-decoration: underline;
-}
-
-.empty-products {
-    text-align: center;
-    color: #8a93a3;
-    font-size: 0.9rem;
-    padding: 24px;
-}
-
-.table-footer {
-    display: flex;
-    justify-content: flex-end;
-    padding: 10px 14px;
-}
-
-.more-link {
-    border: 0;
-    background: transparent;
-    color: var(--primary);
-    font-size: 1rem;
-    cursor: pointer;
-}
-
-@media (max-width: 1279px) {
-    .left-panel,
-    .right-panel {
-        min-height: auto;
-    }
-
-    .left-table-body,
-    .left-empty {
-        min-height: 260px;
-    }
-
-    .right-topbar {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .right-actions {
-        justify-content: flex-start;
-    }
-
-    .search-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .create-btn {
-        width: 100%;
-    }
-
-    .left-inline-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .product-name {
-        font-size: 1.05rem;
-    }
-}
-</style>

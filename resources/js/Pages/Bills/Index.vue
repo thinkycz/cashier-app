@@ -1,22 +1,20 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     transactions: Object,
     filters: Object,
 });
 
-const search = ref(props.filters.search || '');
-const status = ref(props.filters.status || '');
+const search = ref(props.filters?.search || '');
+const status = ref(props.filters?.status || '');
 
-const form = useForm({});
-
-watch([search, status], () => {
-    form.get(route('bills.index'), { 
-        search: search.value, 
-        status: status.value 
+watch([search, status], ([searchValue, statusValue]) => {
+    router.get(route('bills.index'), {
+        search: searchValue,
+        status: statusValue,
     }, {
         preserveState: true,
         replace: true,
@@ -26,7 +24,7 @@ watch([search, status], () => {
 const formatPrice = (price) => {
     return new Intl.NumberFormat('cs-CZ', {
         style: 'currency',
-        currency: 'CZK'
+        currency: 'CZK',
     }).format(price);
 };
 
@@ -36,22 +34,25 @@ const formatDate = (date) => {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     });
 };
 
-const getStatusColor = (status) => {
-    switch (status) {
+const getStatusColor = (transactionStatus) => {
+    switch (transactionStatus) {
         case 'completed':
-            return 'bg-green-100 text-green-800';
+            return 'bg-emerald-100 text-emerald-700';
         case 'open':
-            return 'bg-yellow-100 text-yellow-800';
+            return 'bg-amber-100 text-amber-700';
         case 'cancelled':
-            return 'bg-red-100 text-red-800';
+            return 'bg-rose-100 text-rose-700';
         default:
-            return 'bg-gray-100 text-gray-800';
+            return 'bg-slate-100 text-slate-700';
     }
 };
+
+const isFiltering = computed(() => Boolean(search.value?.trim()) || Boolean(status.value));
+const isEmpty = computed(() => props.transactions.data.length === 0);
 </script>
 
 <template>
@@ -59,124 +60,166 @@ const getStatusColor = (status) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Bills Management
-            </h2>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-2xl font-semibold text-slate-900">Bills</h2>
+                    <p class="mt-1 text-sm text-slate-500">Review transaction history, customer links, and billing totals.</p>
+                </div>
+                <div class="w-full text-sm text-slate-500 sm:w-auto sm:text-right">
+                    {{ transactions.total }} bills
+                </div>
+            </div>
         </template>
 
         <div class="py-6">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="bg-white shadow-sm rounded-lg">
-                    <div class="p-6">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
-                            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 flex-1">
-                                <div class="flex-1 max-w-md">
-                                    <input
-                                        v-model="search"
-                                        type="text"
-                                        placeholder="Search by transaction ID or customer..."
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <select
-                                        v-model="status"
-                                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">All Status</option>
-                                        <option value="open">Open</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                </div>
-                            </div>
+            <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                        <div class="relative">
+                            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                id="bill-search"
+                                v-model="search"
+                                type="text"
+                                placeholder="Search by bill ID or customer"
+                                class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 transition-all duration-200 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                            />
                         </div>
+                        <select
+                            id="bill-status"
+                            v-model="status"
+                            class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition-all duration-200 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="open">Open</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3">Transaction ID</th>
-                                        <th class="px-6 py-3">Customer</th>
-                                        <th class="px-6 py-3">Date</th>
-                                        <th class="px-6 py-3">Subtotal</th>
-                                        <th class="px-6 py-3">Discount</th>
-                                        <th class="px-6 py-3">Total</th>
-                                        <th class="px-6 py-3">Status</th>
-                                        <th class="px-6 py-3">Actions</th>
+                <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div v-if="isEmpty" class="px-6 py-16 text-center">
+                        <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h3 class="mt-3 text-base font-semibold text-slate-900">
+                            {{ isFiltering ? 'No matching bills' : 'No bills yet' }}
+                        </h3>
+                        <p class="mt-1 text-sm text-slate-500">
+                            {{ isFiltering ? 'Try a different search or status filter.' : 'Bills will appear here once transactions are created.' }}
+                        </p>
+                    </div>
+
+                    <div v-else>
+                        <div class="hidden overflow-x-auto lg:block">
+                            <table class="min-w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50">
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Bill ID</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr
                                         v-for="transaction in transactions.data"
                                         :key="transaction.id"
-                                        class="bg-white border-b hover:bg-gray-50"
+                                        class="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
                                     >
-                                        <td class="px-6 py-4 font-medium text-gray-900">
-                                            {{ transaction.transaction_id }}
+                                        <td class="px-5 py-4 align-top">
+                                            <p class="text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
                                         </td>
-                                        <td class="px-6 py-4">
-                                            {{ transaction.customer?.name || 'No customer' }}
+                                        <td class="px-5 py-4 align-top text-sm text-slate-700">{{ transaction.customer?.name || 'No customer' }}</td>
+                                        <td class="px-5 py-4 align-top text-sm text-slate-700">{{ formatDate(transaction.created_at) }}</td>
+                                        <td class="px-5 py-4 text-right align-top">
+                                            <p class="text-sm font-semibold text-slate-900">{{ formatPrice(transaction.total) }}</p>
+                                            <p class="mt-0.5 text-xs text-slate-500">Subtotal {{ formatPrice(transaction.subtotal) }}</p>
                                         </td>
-                                        <td class="px-6 py-4">
-                                            {{ formatDate(transaction.created_at) }}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            {{ formatPrice(transaction.subtotal) }}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            {{ formatPrice(transaction.discount) }}
-                                        </td>
-                                        <td class="px-6 py-4 font-semibold">
-                                            {{ formatPrice(transaction.total) }}
-                                        </td>
-                                        <td class="px-6 py-4">
+                                        <td class="px-5 py-4 align-top">
                                             <span
                                                 :class="getStatusColor(transaction.status)"
-                                                class="px-2 py-1 text-xs rounded-full capitalize"
+                                                class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
                                             >
                                                 {{ transaction.status }}
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <Link
-                                                :href="route('bills.show', transaction.id)"
-                                                class="text-blue-600 hover:text-blue-900"
-                                            >
-                                                View
-                                            </Link>
+                                        <td class="px-5 py-4 align-top">
+                                            <div class="flex justify-end">
+                                                <Link
+                                                    :href="route('bills.show', transaction.id)"
+                                                    class="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                                                >
+                                                    View Bill
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        <div v-if="transactions.data.length === 0" class="text-center py-8 text-gray-500">
-                            No transactions found.
+                        <div class="space-y-3 p-4 lg:hidden">
+                            <article
+                                v-for="transaction in transactions.data"
+                                :key="transaction.id"
+                                class="rounded-lg border border-slate-200 p-4"
+                            >
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</h3>
+                                        <p class="mt-1 text-xs text-slate-500">{{ transaction.customer?.name || 'No customer' }}</p>
+                                    </div>
+                                    <span
+                                        :class="getStatusColor(transaction.status)"
+                                        class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
+                                    >
+                                        {{ transaction.status }}
+                                    </span>
+                                </div>
+                                <div class="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600">
+                                    <div>
+                                        <p class="text-slate-500">Date</p>
+                                        <p class="mt-1 font-medium">{{ formatDate(transaction.created_at) }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-500">Total</p>
+                                        <p class="mt-1 font-semibold text-slate-900">{{ formatPrice(transaction.total) }}</p>
+                                    </div>
+                                </div>
+                                <Link
+                                    :href="route('bills.show', transaction.id)"
+                                    class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                                >
+                                    View Bill
+                                </Link>
+                            </article>
                         </div>
+                    </div>
+                </div>
 
-                        <div v-if="transactions.links" class="mt-6">
-                            <div class="flex justify-center">
-                                <nav class="flex space-x-2">
-                                    <template v-for="link in transactions.links" :key="link.label">
-                                        <Link
-                                            v-if="link.url"
-                                            :href="link.url"
-                                            v-html="link.label"
-                                            :class="link.active 
-                                                ? 'px-3 py-2 bg-blue-500 text-white rounded-md' 
-                                                : 'px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50'"
-                                            class="inline-flex items-center"
-                                        />
-                                        <span
-                                            v-else
-                                            v-html="link.label"
-                                            class="px-3 py-2 text-gray-400 border border-gray-300 rounded-md"
-                                        />
-                                    </template>
-                                </nav>
-                            </div>
-                        </div>
+                <div v-if="transactions.links && !isEmpty" class="flex justify-center">
+                    <div class="flex flex-wrap items-center justify-center gap-2">
+                        <template v-for="(link, index) in transactions.links" :key="`${index}-${link.label}-${link.url}`">
+                            <Link
+                                v-if="link.url"
+                                :href="link.url"
+                                :class="link.active
+                                    ? 'inline-flex min-w-9 items-center justify-center rounded-md border border-sky-600 bg-sky-600 px-3 py-2 text-xs font-medium text-white'
+                                    : 'inline-flex min-w-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50'"
+                                v-html="link.label"
+                            />
+                            <span
+                                v-else
+                                class="inline-flex min-w-9 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-400"
+                                v-html="link.label"
+                            />
+                        </template>
                     </div>
                 </div>
             </div>

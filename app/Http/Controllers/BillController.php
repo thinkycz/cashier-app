@@ -15,7 +15,7 @@ class BillController extends Controller
     {
         $query = Transaction::with('customer');
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_id', 'like', "%{$search}%")
@@ -25,7 +25,7 @@ class BillController extends Controller
             });
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->get('status'));
         }
 
