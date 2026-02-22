@@ -180,11 +180,9 @@ class ProductPagesTest extends TestCase
         return Product::create(array_merge([
             'name' => 'Sample Product',
             'short_name' => null,
-            'category' => null,
             'ean' => null,
             'vat_rate' => 21.00,
             'price' => 99.90,
-            'description' => null,
             'is_active' => true,
         ], $overrides));
     }

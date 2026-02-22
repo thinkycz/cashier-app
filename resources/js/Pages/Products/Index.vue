@@ -55,7 +55,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
                             id="product-search"
                             v-model="search"
                             type="text"
-                            placeholder="Search by name, category, or EAN"
+                            placeholder="Search by name or EAN"
                             class="h-10 pl-10 pr-3 text-sm"
                         />
                     </div>

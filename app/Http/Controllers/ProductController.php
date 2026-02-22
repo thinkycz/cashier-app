@@ -19,7 +19,6 @@ class ProductController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%")
                   ->orWhere('ean', 'like', "%{$search}%");
             });
         }
@@ -51,11 +50,9 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'short_name' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
             'ean' => 'nullable|string|max:255|unique:products,ean',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
@@ -94,11 +91,9 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'short_name' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
             'ean' => 'nullable|string|max:255|unique:products,ean,' . $product->id,
             'vat_rate' => 'required|numeric|min:0|max:100',
             'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 

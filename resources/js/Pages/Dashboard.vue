@@ -100,7 +100,7 @@ const formatVat = (vatRate) => {
 };
 
 const productSubtitle = (product) => {
-    return product.short_name || product.description || '';
+    return product.short_name || '';
 };
 
 const customerDisplayName = (customer) => {

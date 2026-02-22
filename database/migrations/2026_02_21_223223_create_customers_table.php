@@ -13,10 +13,17 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique()->nullable();
-            $table->string('phone')->nullable();
-            $table->text('address')->nullable();
+            $table->string('company_name')->default('');
+            $table->string('company_id')->unique();
+            $table->string('vat_id')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->string('email')->nullable();
+            $table->string('phone_number')->nullable();
+            $table->string('street')->default('');
+            $table->string('city')->default('');
+            $table->string('zip')->default('');
+            $table->char('country_code', 2)->default('CZ');
             $table->timestamps();
         });
     }
