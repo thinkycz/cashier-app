@@ -14,9 +14,9 @@ const props = defineProps({
 });
 
 const searchQuery = ref('');
-const searchMode = ref('name');
 const openReceipts = ref([...(props.openTransactions || [])]);
 const isCreatingReceipt = ref(false);
+const isCheckingOut = ref(false);
 const manualProductName = ref('');
 const manualPackages = ref(1);
 const manualQuantity = ref(1);
@@ -31,11 +31,9 @@ const filteredProducts = computed(() => {
 
     const query = searchQuery.value.toLowerCase();
     return props.products.filter((product) => {
-        if (searchMode.value === 'ean') {
-            return product.ean?.toLowerCase().includes(query);
-        }
-
-        return product.name.toLowerCase().includes(query);
+        const matchesName = product.name?.toLowerCase().includes(query);
+        const matchesEan = product.ean?.toLowerCase().includes(query);
+        return matchesName || matchesEan;
     });
 });
 
@@ -73,6 +71,10 @@ const addManualBillItem = () => {
     manualPrice.value = 0;
     productNameInputRef.value?.focus();
 };
+
+const canCheckout = computed(() => {
+    return Boolean(cart.currentTransaction) && cart.items.length > 0 && !isCheckingOut.value;
+});
 
 const focusPackagesInput = () => {
     packagesInputRef.value?.focus();
@@ -126,6 +128,39 @@ const createNewTransaction = async () => {
     }
 };
 
+const checkoutReceipt = async (checkoutMethod) => {
+    if (!canCheckout.value) {
+        return;
+    }
+
+    const activeTransaction = cart.currentTransaction;
+    if (!activeTransaction?.id) {
+        return;
+    }
+
+    isCheckingOut.value = true;
+
+    try {
+        await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
+            checkout_method: checkoutMethod,
+            subtotal: cart.subtotal,
+            discount: Number(activeTransaction.discount || 0),
+            total: cart.total,
+        });
+
+        openReceipts.value = openReceipts.value.filter((receipt) => receipt.id !== activeTransaction.id);
+        cart.clearTransactionItems(activeTransaction);
+
+        if (openReceipts.value.length > 0) {
+            cart.setTransaction(openReceipts.value[0]);
+        } else {
+            cart.setTransaction(null);
+        }
+    } finally {
+        isCheckingOut.value = false;
+    }
+};
+
 const selectTransaction = (transaction) => {
     cart.setTransaction(transaction);
 };
@@ -147,13 +182,13 @@ onMounted(() => {
     <AuthenticatedLayout>
         <div class="relative py-6">
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
-                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/60">
+                <section class="flex h-full flex-col overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/60">
                     <div class="bg-gradient-to-r from-teal-700 to-cyan-700 px-5 py-4 text-white">
                         <p class="text-xs uppercase tracking-wide text-cyan-100">Current Total</p>
                         <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="flex min-h-0 flex-1 flex-col">
                         <div class="space-y-3 px-4 pt-4">
                             <div>
                                 <label class="mb-1.5 block text-xs font-medium text-slate-600">Product Name</label>
@@ -219,7 +254,11 @@ onMounted(() => {
                             </div>
                         </div>
 
-                        <div class="space-y-3 px-4 pb-4">
+                        <div class="mt-4 px-4">
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Bill Items</h4>
+                        </div>
+
+                        <div class="mt-3 min-h-0 flex-1 max-h-[34rem] space-y-3 overflow-y-auto px-4 pb-4">
                             <article v-if="cart.items.length === 0" class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
                                 Cart is empty
                             </article>
@@ -227,7 +266,7 @@ onMounted(() => {
                             <article
                                 v-for="(item, index) in cartItemsNewestFirst"
                                 :key="item.product.id"
-                                class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70"
+                                class="min-h-24 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70"
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
@@ -252,6 +291,38 @@ onMounted(() => {
                                     </div>
                                 </div>
                             </article>
+                        </div>
+
+                        <div
+                            v-if="cart.items.length > 0"
+                            class="border-t border-slate-200/80 bg-white/80 px-4 pb-4 pt-3 shadow-[0_-6px_14px_-12px_rgba(15,23,42,0.45)]"
+                        >
+                            <div class="grid grid-cols-3 gap-3">
+                            <button
+                                type="button"
+                                :disabled="!canCheckout"
+                                class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                @click="checkoutReceipt('cash')"
+                            >
+                                Hotove
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="!canCheckout"
+                                class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                @click="checkoutReceipt('card')"
+                            >
+                                Kartou
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="!canCheckout"
+                                class="inline-flex items-center justify-center rounded-md border border-transparent bg-cyan-700 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                @click="checkoutReceipt('order')"
+                            >
+                                Objednavka
+                            </button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -318,25 +389,6 @@ onMounted(() => {
                                         placeholder="Search products"
                                         class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                                     />
-                                </div>
-
-                                <div class="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
-                                    <button
-                                        type="button"
-                                        class="rounded px-3 py-1.5 text-xs font-medium"
-                                        :class="searchMode === 'name' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'"
-                                        @click="searchMode = 'name'"
-                                    >
-                                        Name
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="rounded px-3 py-1.5 text-xs font-medium"
-                                        :class="searchMode === 'ean' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'"
-                                        @click="searchMode = 'ean'"
-                                    >
-                                        EAN
-                                    </button>
                                 </div>
 
                                 <Link

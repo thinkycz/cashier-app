@@ -19,6 +19,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/receipts', [DashboardController::class, 'storeReceipt'])->name('dashboard.receipts.store');
+    Route::patch('/dashboard/receipts/{transaction}/checkout', [DashboardController::class, 'checkoutReceipt'])->name('dashboard.receipts.checkout');
 });
 
 Route::middleware('auth')->group(function () {

@@ -54,12 +54,14 @@ const formatTime = (date) => {
 
 const getStatusColor = (transactionStatus) => {
     switch (transactionStatus) {
-        case 'completed':
+        case 'cash':
             return 'bg-emerald-100 text-emerald-700';
+        case 'card':
+            return 'bg-cyan-100 text-cyan-700';
+        case 'order':
+            return 'bg-sky-100 text-sky-700';
         case 'open':
             return 'bg-amber-100 text-amber-700';
-        case 'cancelled':
-            return 'bg-rose-100 text-rose-700';
         default:
             return 'bg-slate-100 text-slate-700';
     }
@@ -99,8 +101,9 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                     >
                         <option value="">All Statuses</option>
                         <option value="open">Open</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="order">Order</option>
                     </SelectInput>
                 </div>
             </div>

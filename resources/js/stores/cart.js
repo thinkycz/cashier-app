@@ -2,9 +2,13 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useCartStore = defineStore('cart', () => {
-    const itemsByReceipt = ref({});
-    const currentTransaction = ref(null);
-    const selectedCustomer = ref(null);
+    const STORAGE_KEY = 'cashier-cart-v1';
+    const hasLocalStorage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    const persistedState = loadPersistedState();
+
+    const itemsByReceipt = ref(persistedState.itemsByReceipt);
+    const currentTransaction = ref(persistedState.currentTransaction);
+    const selectedCustomer = ref(persistedState.selectedCustomer);
 
     const currentReceiptKey = computed(() => {
         if (!currentTransaction.value) {
@@ -64,6 +68,8 @@ export const useCartStore = defineStore('cart', () => {
                 total: unitPrice * quantity
             });
         }
+
+        persistState();
     }
 
     function addManualItem({ productName, quantity = 1, unitPrice = 0, packages = 1 }) {
@@ -89,6 +95,8 @@ export const useCartStore = defineStore('cart', () => {
             vat_rate: 0,
             total: safeUnitPrice * safeQuantity,
         });
+
+        persistState();
     }
 
     function removeItem(productId) {
@@ -100,6 +108,7 @@ export const useCartStore = defineStore('cart', () => {
         const index = currentItems.findIndex(item => item.product.id === productId);
         if (index > -1) {
             currentItems.splice(index, 1);
+            persistState();
         }
     }
 
@@ -113,6 +122,7 @@ export const useCartStore = defineStore('cart', () => {
         if (item) {
             item.quantity = quantity;
             item.total = item.quantity * item.unit_price;
+            persistState();
         }
     }
 
@@ -120,12 +130,15 @@ export const useCartStore = defineStore('cart', () => {
         itemsByReceipt.value = {};
         currentTransaction.value = null;
         selectedCustomer.value = null;
+        persistState();
     }
 
     function setTransaction(transaction) {
         currentTransaction.value = transaction;
 
         if (!currentReceiptKey.value) {
+            selectedCustomer.value = null;
+            persistState();
             return;
         }
 
@@ -142,16 +155,35 @@ export const useCartStore = defineStore('cart', () => {
         }
 
         selectedCustomer.value = transaction?.customer || null;
+        persistState();
     }
 
     function setCustomer(customer) {
         selectedCustomer.value = customer;
+        persistState();
     }
 
     function setDiscount(amount) {
         if (currentTransaction.value) {
             currentTransaction.value.discount = amount;
+            persistState();
         }
+    }
+
+    function clearTransactionItems(transaction) {
+        const receiptKey = getReceiptKey(transaction);
+        if (!receiptKey) {
+            return;
+        }
+
+        delete itemsByReceipt.value[receiptKey];
+
+        if (currentTransaction.value?.id === transaction?.id) {
+            currentTransaction.value = null;
+            selectedCustomer.value = null;
+        }
+
+        persistState();
     }
 
     return {
@@ -166,6 +198,7 @@ export const useCartStore = defineStore('cart', () => {
         removeItem,
         updateQuantity,
         clearCart,
+        clearTransactionItems,
         setTransaction,
         setCustomer,
         setDiscount
@@ -181,5 +214,85 @@ export const useCartStore = defineStore('cart', () => {
         }
 
         return itemsByReceipt.value[currentReceiptKey.value];
+    }
+
+    function getReceiptKey(transaction) {
+        if (!transaction) {
+            return null;
+        }
+
+        if (transaction.id) {
+            return `transaction:${transaction.id}`;
+        }
+
+        if (transaction.transaction_id) {
+            return `transaction-code:${transaction.transaction_id}`;
+        }
+
+        return null;
+    }
+
+    function persistState() {
+        if (!hasLocalStorage) {
+            return;
+        }
+
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            itemsByReceipt: itemsByReceipt.value,
+            currentTransaction: currentTransaction.value,
+            selectedCustomer: selectedCustomer.value,
+        }));
+    }
+
+    function loadPersistedState() {
+        if (!hasLocalStorage) {
+            return defaultState();
+        }
+
+        try {
+            const rawState = window.localStorage.getItem(STORAGE_KEY);
+            if (!rawState) {
+                return defaultState();
+            }
+
+            const parsed = JSON.parse(rawState);
+            return {
+                itemsByReceipt: sanitizeItemsByReceipt(parsed?.itemsByReceipt),
+                currentTransaction: parsed?.currentTransaction || null,
+                selectedCustomer: parsed?.selectedCustomer || null,
+            };
+        } catch {
+            return defaultState();
+        }
+    }
+
+    function sanitizeItemsByReceipt(value) {
+        if (!value || typeof value !== 'object') {
+            return {};
+        }
+
+        return Object.fromEntries(
+            Object.entries(value).map(([key, receiptItems]) => [
+                key,
+                Array.isArray(receiptItems)
+                    ? receiptItems.map((item) => ({
+                        ...item,
+                        packages: Number(item?.packages || 1),
+                        quantity: Number(item?.quantity || 0),
+                        unit_price: Number(item?.unit_price || 0),
+                        vat_rate: Number(item?.vat_rate || 0),
+                        total: Number(item?.total || 0),
+                    }))
+                    : [],
+            ]),
+        );
+    }
+
+    function defaultState() {
+        return {
+            itemsByReceipt: {},
+            currentTransaction: null,
+            selectedCustomer: null,
+        };
     }
 });
