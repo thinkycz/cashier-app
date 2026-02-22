@@ -48,16 +48,17 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'checkout_method' => ['required', 'in:cash,card,order'],
-            'subtotal' => ['required', 'numeric', 'min:0'],
+            'subtotal' => ['nullable', 'numeric', 'min:0'],
             'discount' => ['nullable', 'numeric', 'min:0'],
-            'total' => ['required', 'numeric', 'min:0'],
+            'total' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'items.*.product_name' => ['required', 'string', 'max:255'],
-            'items.*.quantity' => ['required', 'numeric', 'min:1'],
+            'items.*.packages' => ['required', 'integer', 'min:1'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.vat_rate' => ['nullable', 'numeric', 'min:0'],
-            'items.*.total' => ['required', 'numeric', 'min:0'],
+            'items.*.total' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if ($transaction->status !== 'open') {
@@ -66,10 +67,42 @@ class DashboardController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($transaction, $validated) {
+        $discount = round((float) ($validated['discount'] ?? 0), 2);
+        $subtotal = 0.0;
+        $normalizedItems = [];
+
+        foreach ($validated['items'] as $item) {
+            $packages = (int) $item['packages'];
+            $quantity = (int) $item['quantity'];
+            $unitPrice = round((float) $item['unit_price'], 2);
+            $vatRate = round((float) ($item['vat_rate'] ?? 0), 2);
+            $lineTotal = round($packages * $quantity * $unitPrice, 2);
+
+            $normalizedItems[] = [
+                'product_id' => $item['product_id'] ?? null,
+                'product_name' => $item['product_name'],
+                'packages' => $packages,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'vat_rate' => $vatRate,
+                'total' => $lineTotal,
+            ];
+
+            $subtotal = round($subtotal + $lineTotal, 2);
+        }
+
+        $total = round($subtotal - $discount, 2);
+
+        if ($total < 0) {
+            return response()->json([
+                'message' => 'Discount cannot exceed subtotal.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($transaction, $validated, $normalizedItems, $subtotal, $discount, $total) {
             $transaction->transactionItems()->delete();
 
-            foreach ($validated['items'] as $item) {
+            foreach ($normalizedItems as $item) {
                 $productId = $item['product_id'] ?? null;
 
                 if (!$productId) {
@@ -86,7 +119,8 @@ class DashboardController extends Controller
 
                 $transaction->transactionItems()->create([
                     'product_id' => $productId,
-                    'quantity' => (int) $item['quantity'],
+                    'packages' => $item['packages'],
+                    'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'vat_rate' => $item['vat_rate'] ?? 0,
                     'total' => $item['total'],
@@ -94,9 +128,9 @@ class DashboardController extends Controller
             }
 
             $transaction->update([
-                'subtotal' => $validated['subtotal'],
-                'discount' => $validated['discount'] ?? 0,
-                'total' => $validated['total'],
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'total' => $total,
                 'status' => $validated['checkout_method'],
             ]);
         });

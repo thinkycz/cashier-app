@@ -54,18 +54,21 @@ export const useCartStore = defineStore('cart', () => {
         }
 
         const existingItem = currentItems.find(item => item.product.id === product.id);
+        const safeQuantity = Math.max(1, Number(quantity) || 1);
         const unitPrice = Number(product.price || 0);
 
         if (existingItem) {
-            existingItem.quantity += quantity;
-            existingItem.total = existingItem.quantity * existingItem.unit_price;
+            existingItem.packages = Number(existingItem.packages || 1);
+            existingItem.quantity += safeQuantity;
+            existingItem.total = calculateLineTotal(existingItem.packages, existingItem.quantity, existingItem.unit_price);
         } else {
             currentItems.push({
                 product,
-                quantity,
+                packages: 1,
+                quantity: safeQuantity,
                 unit_price: unitPrice,
                 vat_rate: Number(product.vat_rate || 0),
-                total: unitPrice * quantity
+                total: calculateLineTotal(1, safeQuantity, unitPrice)
             });
         }
 
@@ -93,7 +96,7 @@ export const useCartStore = defineStore('cart', () => {
             quantity: safeQuantity,
             unit_price: safeUnitPrice,
             vat_rate: 0,
-            total: safeUnitPrice * safeQuantity,
+            total: calculateLineTotal(safePackages, safeQuantity, safeUnitPrice),
         });
 
         persistState();
@@ -120,8 +123,9 @@ export const useCartStore = defineStore('cart', () => {
 
         const item = currentItems.find(item => item.product.id === productId);
         if (item) {
-            item.quantity = quantity;
-            item.total = item.quantity * item.unit_price;
+            item.packages = Number(item.packages || 1);
+            item.quantity = Math.max(1, Number(quantity) || 1);
+            item.total = calculateLineTotal(item.packages, item.quantity, item.unit_price);
             persistState();
         }
     }
@@ -294,5 +298,13 @@ export const useCartStore = defineStore('cart', () => {
             currentTransaction: null,
             selectedCustomer: null,
         };
+    }
+
+    function calculateLineTotal(packages, quantity, unitPrice) {
+        const safePackages = Math.max(1, Number(packages) || 1);
+        const safeQuantity = Math.max(1, Number(quantity) || 1);
+        const safeUnitPrice = Math.max(0, Number(unitPrice) || 0);
+
+        return Math.round((safePackages * safeQuantity * safeUnitPrice + Number.EPSILON) * 100) / 100;
     }
 });

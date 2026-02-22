@@ -174,6 +174,7 @@ const printBill = () => {
                                 <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">#</th>
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
+                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Packages</th>
                                     <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Qty</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Unit Price</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
@@ -188,6 +189,7 @@ const printBill = () => {
                                 >
                                     <td class="px-5 py-4 text-sm text-slate-700">{{ index + 1 }}</td>
                                     <td class="px-5 py-4 text-sm font-medium text-slate-900">{{ item.product.name }}</td>
+                                    <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.packages || 1 }}</td>
                                     <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.quantity }}</td>
                                     <td class="px-5 py-4 text-right text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</td>
                                     <td class="px-5 py-4 text-right text-sm text-slate-700">{{ item.vat_rate }}%</td>
@@ -209,7 +211,11 @@ const printBill = () => {
                                 </div>
                                 <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
                             </div>
-                            <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
+                            <div class="mt-3 grid grid-cols-4 gap-3 text-xs text-slate-600">
+                                <div>
+                                    <p class="text-slate-500">Packages</p>
+                                    <p class="mt-1 font-medium">{{ item.packages || 1 }}</p>
+                                </div>
                                 <div>
                                     <p class="text-slate-500">Qty</p>
                                     <p class="mt-1 font-medium">{{ item.quantity }}</p>

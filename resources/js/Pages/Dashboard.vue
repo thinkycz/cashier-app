@@ -153,6 +153,7 @@ const checkoutReceipt = async (checkoutMethod) => {
                 return {
                     product_id: productId,
                     product_name: item.product?.name || 'Unknown product',
+                    packages: Number(item.packages || 1),
                     quantity: Number(item.quantity || 0),
                     unit_price: Number(item.unit_price || 0),
                     vat_rate: Number(item.vat_rate || 0),
