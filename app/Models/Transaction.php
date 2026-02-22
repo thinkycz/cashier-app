@@ -10,6 +10,7 @@ class Transaction extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'transaction_id',
         'customer_id',
         'subtotal',
@@ -30,6 +31,11 @@ class Transaction extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function transactionItems()
     {
         return $this->hasMany(TransactionItem::class);
@@ -44,5 +50,18 @@ class Transaction extends Model
                 $transaction->transaction_id = 'UC' . date('ymd') . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
             }
         });
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        $query = $this->newQuery()->where($field, $value);
+
+        if (auth()->check()) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query->firstOrFail();
     }
 }

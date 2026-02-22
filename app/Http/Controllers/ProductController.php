@@ -13,7 +13,7 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::query();
+        $query = Product::query()->where('user_id', $request->user()->id);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -50,13 +50,16 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'short_name' => 'nullable|string|max:255',
-            'ean' => 'nullable|string|max:255|unique:products,ean',
+            'ean' => 'nullable|string|max:255',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'price' => 'required|numeric|min:0',
             'is_active' => 'boolean',
         ]);
 
-        Product::create($validated);
+        Product::create([
+            ...$validated,
+            'user_id' => $request->user()->id,
+        ]);
 
         return redirect()->route('products.index')
             ->with('success', 'Produkt byl úspěšně vytvořen.');
@@ -91,7 +94,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'short_name' => 'nullable|string|max:255',
-            'ean' => 'nullable|string|max:255|unique:products,ean,' . $product->id,
+            'ean' => 'nullable|string|max:255',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'price' => 'required|numeric|min:0',
             'is_active' => 'boolean',

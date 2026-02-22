@@ -13,7 +13,9 @@ class BillController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Transaction::with('customer');
+        $query = Transaction::query()
+            ->where('user_id', $request->user()->id)
+            ->with('customer');
 
         if ($request->filled('search')) {
             $search = $request->get('search');

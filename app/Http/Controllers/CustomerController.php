@@ -13,7 +13,7 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $query = Customer::query()->where('user_id', $request->user()->id);
 
         if ($request->filled('search')) {
             $search = $request->get('search');
@@ -53,7 +53,10 @@ class CustomerController extends Controller
     {
         $validated = $this->normalizePayload($this->validatePayload($request));
 
-        Customer::create($validated);
+        Customer::create([
+            ...$validated,
+            'user_id' => $request->user()->id,
+        ]);
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer was successfully created.');

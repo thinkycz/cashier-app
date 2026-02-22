@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Product;
+use App\Models\User;
 
 class ProductSeeder extends Seeder
 {
@@ -12,6 +13,12 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
+        $demoUser = User::where('email', 'testovaci@admin.cz')->first();
+
+        if (! $demoUser) {
+            return;
+        }
+
         $products = [
             [
                 'name' => 'nuoc hoa 100ml',
@@ -57,8 +64,14 @@ class ProductSeeder extends Seeder
 
         foreach ($products as $product) {
             Product::updateOrCreate(
-                ['ean' => $product['ean']],
-                $product
+                [
+                    'user_id' => $demoUser->id,
+                    'ean' => $product['ean'],
+                ],
+                [
+                    ...$product,
+                    'user_id' => $demoUser->id,
+                ]
             );
         }
     }

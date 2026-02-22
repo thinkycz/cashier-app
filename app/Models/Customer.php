@@ -10,6 +10,7 @@ class Customer extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'company_name',
         'company_id',
         'vat_id',
@@ -33,6 +34,11 @@ class Customer extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim(implode(' ', array_filter([
@@ -52,5 +58,18 @@ class Customer extends Model
         }
 
         return 'Unknown customer';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        $query = $this->newQuery()->where($field, $value);
+
+        if (auth()->check()) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query->firstOrFail();
     }
 }

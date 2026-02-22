@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('transaction_id')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
             $table->decimal('subtotal', 10, 2);
@@ -20,6 +21,7 @@ return new class extends Migration
             $table->decimal('total', 10, 2);
             $table->enum('status', ['open', 'cash', 'card', 'order'])->default('open');
             $table->text('notes')->nullable();
+            $table->index(['user_id', 'created_at']);
             $table->timestamps();
         });
     }

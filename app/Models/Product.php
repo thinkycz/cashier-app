@@ -10,6 +10,7 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'short_name',
         'ean',
@@ -27,5 +28,23 @@ class Product extends Model
     public function transactionItems()
     {
         return $this->hasMany(TransactionItem::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        $query = $this->newQuery()->where($field, $value);
+
+        if (auth()->check()) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query->firstOrFail();
     }
 }
