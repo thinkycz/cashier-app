@@ -144,7 +144,7 @@ class DashboardController extends Controller
                         'ean' => null,
                         'vat_rate' => $item['vat_rate'] ?? 0,
                         'price' => $item['unit_price'],
-                        'is_active' => false,
+                        'is_active' => true,
                     ]);
 
                     $productId = $product->id;
