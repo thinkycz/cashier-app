@@ -66,6 +66,31 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
+    function addManualItem({ productName, quantity = 1, unitPrice = 0, packages = 1 }) {
+        const currentItems = getCurrentItems();
+
+        if (!currentItems) {
+            return;
+        }
+
+        const safeQuantity = Math.max(1, Number(quantity) || 1);
+        const safeUnitPrice = Math.max(0, Number(unitPrice) || 0);
+        const safePackages = Math.max(1, Number(packages) || 1);
+        const lineId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        currentItems.push({
+            product: {
+                id: lineId,
+                name: String(productName || '').trim() || 'Unknown product',
+            },
+            packages: safePackages,
+            quantity: safeQuantity,
+            unit_price: safeUnitPrice,
+            vat_rate: 0,
+            total: safeUnitPrice * safeQuantity,
+        });
+    }
+
     function removeItem(productId) {
         const currentItems = getCurrentItems();
         if (!currentItems) {
@@ -108,6 +133,7 @@ export const useCartStore = defineStore('cart', () => {
             const transactionItems = transaction?.transaction_items || [];
             itemsByReceipt.value[currentReceiptKey.value] = transactionItems.map((item) => ({
                 product: item.product,
+                packages: Number(item.packages || 1),
                 quantity: Number(item.quantity),
                 unit_price: Number(item.unit_price),
                 vat_rate: Number(item.vat_rate),
@@ -136,6 +162,7 @@ export const useCartStore = defineStore('cart', () => {
         total,
         itemCount,
         addItem,
+        addManualItem,
         removeItem,
         updateQuantity,
         clearCart,

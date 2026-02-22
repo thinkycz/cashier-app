@@ -17,6 +17,14 @@ const searchQuery = ref('');
 const searchMode = ref('name');
 const openReceipts = ref([...(props.openTransactions || [])]);
 const isCreatingReceipt = ref(false);
+const manualProductName = ref('');
+const manualPackages = ref(1);
+const manualQuantity = ref(1);
+const manualPrice = ref(0);
+const productNameInputRef = ref(null);
+const packagesInputRef = ref(null);
+const quantityInputRef = ref(null);
+const priceInputRef = ref(null);
 
 const filteredProducts = computed(() => {
     if (!searchQuery.value) return props.products;
@@ -31,12 +39,51 @@ const filteredProducts = computed(() => {
     });
 });
 
+const cartItemsNewestFirst = computed(() => {
+    return [...cart.items].reverse();
+});
+
 const activeReceiptLabel = computed(() => {
     return cart.currentTransaction?.transaction_id || 'No active receipt';
 });
 
 const addToCart = (product) => {
     cart.addItem(product);
+};
+
+const canAddManualItem = computed(() => {
+    return Boolean(cart.currentTransaction) && manualProductName.value.trim().length > 0;
+});
+
+const addManualBillItem = () => {
+    if (!canAddManualItem.value) {
+        return;
+    }
+
+    cart.addManualItem({
+        productName: manualProductName.value,
+        packages: manualPackages.value,
+        quantity: manualQuantity.value,
+        unitPrice: manualPrice.value,
+    });
+
+    manualProductName.value = '';
+    manualPackages.value = 1;
+    manualQuantity.value = 1;
+    manualPrice.value = 0;
+    productNameInputRef.value?.focus();
+};
+
+const focusPackagesInput = () => {
+    packagesInputRef.value?.focus();
+};
+
+const focusQuantityInput = () => {
+    quantityInputRef.value?.focus();
+};
+
+const focusPriceInput = () => {
+    priceInputRef.value?.focus();
 };
 
 const formatPrice = (price) => {
@@ -106,43 +153,105 @@ onMounted(() => {
                         <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
                     </div>
 
-                    <div class="space-y-4 p-4">
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <div class="space-y-4">
+                        <div class="space-y-3 px-4 pt-4">
                             <div>
-                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Packages</label>
-                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Product Name</label>
+                                <input
+                                    ref="productNameInputRef"
+                                    v-model="manualProductName"
+                                    type="text"
+                                    placeholder="Product Name"
+                                    class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                    @keydown.enter.prevent="focusPackagesInput"
+                                />
                             </div>
-                            <div>
-                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Quantity</label>
-                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+
+                            <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Packages</label>
+                                    <input
+                                        ref="packagesInputRef"
+                                        v-model.number="manualPackages"
+                                        type="number"
+                                        min="1"
+                                        class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                        @keydown.enter.prevent="focusQuantityInput"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Quantity</label>
+                                    <input
+                                        ref="quantityInputRef"
+                                        v-model.number="manualQuantity"
+                                        type="number"
+                                        min="1"
+                                        class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                        @keydown.enter.prevent="focusPriceInput"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Manual Price</label>
+                                    <input
+                                        ref="priceInputRef"
+                                        v-model.number="manualPrice"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                        @keydown.enter.prevent="addManualBillItem"
+                                    />
+                                </div>
+                                <div class="flex items-end">
+                                <button
+                                    type="button"
+                                    :disabled="!canAddManualItem"
+                                    class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-transparent bg-teal-600 text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    @click="addManualBillItem"
+                                    aria-label="Add Item"
+                                    title="Add Item"
+                                >
+                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path d="M10 4a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 0110 4z" />
+                                    </svg>
+                                </button>
+                            </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="mb-1.5 block text-xs font-medium text-slate-600">Manual Price</label>
-                            <input type="number" min="0" step="0.01" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
-                        </div>
-
-                        <div class="overflow-hidden rounded-md border border-slate-200/90">
-                            <div class="grid grid-cols-4 bg-slate-50/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                <span>#</span>
-                                <span>Qty</span>
-                                <span>Unit</span>
-                                <span class="text-right">Total</span>
-                            </div>
-                            <div v-if="cart.items.length === 0" class="px-3 py-8 text-center text-sm text-slate-500">
+                        <div class="space-y-3 px-4 pb-4">
+                            <article v-if="cart.items.length === 0" class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
                                 Cart is empty
-                            </div>
-                            <div
-                                v-for="(item, index) in cart.items"
+                            </article>
+
+                            <article
+                                v-for="(item, index) in cartItemsNewestFirst"
                                 :key="item.product.id"
-                                class="grid grid-cols-4 border-t border-slate-100 px-3 py-2 text-sm text-slate-700"
+                                class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70"
                             >
-                                <span>{{ index + 1 }}</span>
-                                <span>{{ item.quantity }}</span>
-                                <span>{{ formatPrice(item.unit_price) }}</span>
-                                <span class="text-right font-medium text-slate-900">{{ formatPrice(item.total) }}</span>
-                            </div>
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900">{{ item.product?.name || 'Unknown product' }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-500">Line #{{ cart.items.length - index }}</p>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                                </div>
+
+                                <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
+                                    <div>
+                                        <p class="text-slate-500">Packages</p>
+                                        <p class="mt-1 font-medium text-slate-900">{{ item.packages || 1 }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-500">Qty</p>
+                                        <p class="mt-1 font-medium text-slate-900">{{ item.quantity }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-500">Unit</p>
+                                        <p class="mt-1 font-medium text-slate-900">{{ formatPrice(item.unit_price) }}</p>
+                                    </div>
+                                </div>
+                            </article>
                         </div>
                     </div>
                 </section>
@@ -171,7 +280,7 @@ onMounted(() => {
 
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
-                            <h4 class="text-sm font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
                         </div>
                         <div class="space-y-2 p-4">
                             <button
@@ -194,11 +303,11 @@ onMounted(() => {
 
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
-                            <h4 class="text-sm font-semibold uppercase tracking-wide text-teal-700/80">Find Product</h4>
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Find Product</h4>
                         </div>
 
-                        <div class="space-y-4 p-4">
-                            <div class="flex flex-col gap-3 md:flex-row md:items-center">
+                        <div class="space-y-4">
+                            <div class="flex flex-col gap-3 px-4 pt-4 md:flex-row md:items-center">
                                 <div class="relative flex-1">
                                     <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -286,7 +395,7 @@ onMounted(() => {
                                 </table>
                             </div>
 
-                            <div class="space-y-3 lg:hidden">
+                            <div class="space-y-3 px-4 pb-4 lg:hidden">
                                 <article v-for="product in filteredProducts" :key="product.id" class="rounded-lg border border-slate-200 p-4">
                                     <div class="flex items-start justify-between gap-3">
                                         <div>
