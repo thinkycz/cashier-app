@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\Product;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -129,6 +131,47 @@ class BillPagesTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_bills_preview_uses_bill_template_for_cash_and_card_statuses(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['status' => 'cash']);
+        $product = $this->createProduct($user);
+        $this->createTransactionItem($transaction, $product);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction));
+
+        $response
+            ->assertOk()
+            ->assertViewIs('bills.bill')
+            ->assertSee('Účtenka č.', false);
+    }
+
+    public function test_bills_preview_uses_quotation_template_for_order_status(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['status' => 'order']);
+        $product = $this->createProduct($user, ['short_name' => 'Short']);
+        $this->createTransactionItem($transaction, $product);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction));
+
+        $response
+            ->assertOk()
+            ->assertViewIs('bills.quotation')
+            ->assertSee('Objednávka', false);
+    }
+
+    public function test_user_gets_404_for_another_users_bill_preview_route(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $transaction = $this->createTransaction($otherUser, ['status' => 'cash']);
+
+        $this->actingAs($user)
+            ->get(route('bills.preview', $transaction))
+            ->assertNotFound();
+    }
+
     private function createTransaction(User $user, array $overrides = []): Transaction
     {
         return Transaction::create(array_merge([
@@ -156,6 +199,32 @@ class BillPagesTest extends TestCase
             'city' => null,
             'zip' => null,
             'country_code' => null,
+        ], $overrides));
+    }
+
+    private function createProduct(User $user, array $overrides = []): Product
+    {
+        return Product::create(array_merge([
+            'user_id' => $user->id,
+            'name' => 'Sample Product',
+            'short_name' => null,
+            'ean' => null,
+            'vat_rate' => 21,
+            'price' => 100,
+            'is_active' => true,
+        ], $overrides));
+    }
+
+    private function createTransactionItem(Transaction $transaction, Product $product, array $overrides = []): TransactionItem
+    {
+        return TransactionItem::create(array_merge([
+            'transaction_id' => $transaction->id,
+            'product_id' => $product->id,
+            'packages' => 1,
+            'quantity' => 2,
+            'unit_price' => 100,
+            'vat_rate' => 21,
+            'total' => 200,
         ], $overrides));
     }
 }

@@ -1,10 +1,17 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Modal from '@/Components/Modal.vue';
 import { Head, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     bill: Object,
 });
+
+const showPrintPreviewModal = ref(false);
+const previewFrameRef = ref(null);
+const previewUrl = route('bills.preview', props.bill.id);
+const embeddedPreviewUrl = `${previewUrl}?embedded=1`;
 
 const customerDisplayName = (customer) => {
     if (!customer) return 'No customer';
@@ -98,8 +105,25 @@ const getStatusColor = (status) => {
     }
 };
 
+const openPrintPreviewModal = () => {
+    showPrintPreviewModal.value = true;
+};
+
+const closePrintPreviewModal = () => {
+    showPrintPreviewModal.value = false;
+};
+
 const printBill = () => {
-    window.print();
+    const frameWindow = previewFrameRef.value?.contentWindow;
+
+    if (frameWindow) {
+        frameWindow.focus();
+        frameWindow.print();
+    }
+};
+
+const openPreviewInNewWindow = () => {
+    window.open(previewUrl, '_blank', 'noopener');
 };
 
 const adjustmentLabel = () => {
@@ -135,7 +159,7 @@ const adjustmentLabel = () => {
                     </Link>
                     <button
                         type="button"
-                        @click="printBill"
+                        @click="openPrintPreviewModal"
                         class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +171,7 @@ const adjustmentLabel = () => {
             </div>
         </template>
 
-        <div class="py-6">
+        <div class="screen-bill-content py-6">
             <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="grid gap-4 px-6 py-5 md:grid-cols-3 md:items-center">
@@ -382,5 +406,83 @@ const adjustmentLabel = () => {
                 </section>
             </div>
         </div>
+
+        <Modal :show="showPrintPreviewModal" max-width="2xl" @close="closePrintPreviewModal">
+            <div class="preview-modal-content">
+                <div class="preview-modal-header">
+                    <h3 class="text-lg font-semibold text-slate-900">Náhled</h3>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="no-print inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-teal-200/70 transition-all duration-200 hover:from-teal-700 hover:to-cyan-700"
+                            @click="printBill"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                            </svg>
+                            Vytisknout
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                            @click="openPreviewInNewWindow"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7m0 0v7m0-7L10 14" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h6m-6 0v14h14v-6" />
+                            </svg>
+                            Otevřít v novém okně
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            @click="closePrintPreviewModal"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preview-canvas">
+                    <iframe
+                        ref="previewFrameRef"
+                        :src="embeddedPreviewUrl"
+                        title="Náhled účtenky"
+                        class="preview-frame"
+                    />
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.preview-modal-content {
+    padding: 1.25rem;
+}
+
+.preview-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.preview-canvas {
+    margin-top: 1rem;
+    height: min(72vh, 860px);
+    border-radius: 0.75rem;
+    background: #9aa9bf;
+    overflow: hidden;
+}
+
+.preview-frame {
+    height: 100%;
+    width: 100%;
+    border: 0;
+    border-radius: 0.75rem;
+    background: #9aa9bf;
+}
+</style>
