@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useCartStore } from '@/stores/cart';
 import {
@@ -27,6 +27,7 @@ const props = defineProps({
     openTransactions: Array,
     customers: Array,
 });
+const page = usePage();
 
 const searchQuery = ref('');
 const serverOpenReceipts = ref([...(props.openTransactions || [])]);
@@ -95,6 +96,21 @@ const openReceipts = computed(() => {
 
 const pendingSyncCount = computed(() => {
     return syncQueueReceipts.value.filter((receipt) => receipt?.sync_status === 'pending' || receipt?.sync_status === 'failed').length;
+});
+
+const supplierProfile = computed(() => {
+    const user = page.props?.auth?.user || {};
+    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+
+    return {
+        company_name: user.company_name || '',
+        full_name: fullName,
+        street: user.street || '',
+        zip: user.zip || '',
+        city: user.city || '',
+        company_id: user.company_id || '',
+        vat_id: user.vat_id || '',
+    };
 });
 
 const normalizeQuery = (value) => String(value || '').trim().toLowerCase();
@@ -1036,10 +1052,29 @@ const escapeHtml = (value) => {
         .replaceAll("'", '&#39;');
 };
 
-const buildOfflinePrintBody = (receipt) => {
+const buildOfflinePrintBody = (receipt, supplier) => {
     if (!receipt) {
         return '<div></div>';
     }
+
+    const supplierRows = supplier?.company_name
+        ? `
+            <tr>
+                <td colspan="100%" style="text-align:center;font-weight:600;color:rgb(15 23 42);">${escapeHtml(supplier.company_name)}</td>
+            </tr>
+            ${supplier.full_name ? `<tr><td colspan="100%" style="text-align:center;color:rgb(51 65 85);">${escapeHtml(supplier.full_name)}</td></tr>` : ''}
+            <tr>
+                <td colspan="100%" style="text-align:center;color:rgb(51 65 85);">${escapeHtml(supplier.street)}</td>
+            </tr>
+            <tr>
+                <td colspan="100%" style="text-align:center;color:rgb(51 65 85);">${escapeHtml(`${supplier.zip} ${supplier.city}`.trim())}</td>
+            </tr>
+            <tr>
+                <td colspan="100%" style="text-align:center;color:rgb(51 65 85);">IČ: ${escapeHtml(supplier.company_id)}</td>
+            </tr>
+            ${supplier.vat_id ? `<tr><td colspan="100%" style="text-align:center;color:rgb(51 65 85);">DIČ: ${escapeHtml(supplier.vat_id)}</td></tr>` : ''}
+        `
+        : '';
 
     const renderOrderRows = () => {
         const itemRows = receipt.items.map((item) => {
@@ -1063,6 +1098,7 @@ const buildOfflinePrintBody = (receipt) => {
 
         return `
         <thead style="border-bottom:1px solid rgb(15 118 110);">
+            ${supplierRows}
             <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
                 <td colspan="100%" style="padding:.375rem 0;text-align:center;font-weight:600;color:rgb(19 78 74);">Objednavka</td>
             </tr>
@@ -1117,6 +1153,7 @@ const buildOfflinePrintBody = (receipt) => {
 
         return `
         <thead style="border-bottom:1px solid rgb(15 118 110);">
+            ${supplierRows}
             <tr style="border-bottom:1px solid rgb(153 246 228);background:rgb(240 253 250 / .7);">
                 <td colspan="2" style="padding:.375rem .25rem;font-weight:600;color:rgb(19 78 74);">Uctenka c.</td>
                 <td colspan="2" style="padding:.375rem .25rem;text-align:right;font-weight:600;color:rgb(19 78 74);">${escapeHtml(receipt.number)}</td>
@@ -1206,7 +1243,7 @@ const printOfflineDraft = () => {
     const billTitle = offlinePreviewReceipt.value?.number
         ? `Bill ${offlinePreviewReceipt.value.number}`
         : 'Offline bill preview';
-    const contentHtml = buildOfflinePrintBody(offlinePreviewReceipt.value);
+    const contentHtml = buildOfflinePrintBody(offlinePreviewReceipt.value, supplierProfile.value);
     const html = buildOfflinePrintDocument(contentHtml, billTitle);
     const printFrame = document.createElement('iframe');
     printFrame.style.position = 'fixed';
@@ -2257,6 +2294,24 @@ onBeforeUnmount(() => {
                     <div class="dashboard-offline-preview text-[11px] leading-tight text-slate-800" id="offline-bill-preview">
                         <table class="w-full">
                             <thead v-if="offlinePreviewReceipt.is_order" class="border-b border-teal-700">
+                                <tr v-if="supplierProfile.company_name">
+                                    <td class="text-center font-semibold text-slate-900" colspan="100%">{{ supplierProfile.company_name }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.full_name">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.full_name }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.street || supplierProfile.zip || supplierProfile.city">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.street }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.zip || supplierProfile.city">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.zip }} {{ supplierProfile.city }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.company_id">
+                                    <td class="text-center text-slate-700" colspan="100%">IČ: {{ supplierProfile.company_id }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.vat_id">
+                                    <td class="text-center text-slate-700" colspan="100%">DIČ: {{ supplierProfile.vat_id }}</td>
+                                </tr>
                                 <tr class="border-y-2 border-teal-700 bg-teal-50/70">
                                     <td class="py-1.5 text-center font-semibold text-teal-900" colspan="100%">Objednavka</td>
                                 </tr>
@@ -2267,6 +2322,24 @@ onBeforeUnmount(() => {
                             </thead>
 
                             <thead v-else class="border-b border-teal-700">
+                                <tr v-if="supplierProfile.company_name">
+                                    <td class="text-center font-semibold text-slate-900" colspan="100%">{{ supplierProfile.company_name }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.full_name">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.full_name }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.street || supplierProfile.zip || supplierProfile.city">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.street }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.zip || supplierProfile.city">
+                                    <td class="text-center text-slate-700" colspan="100%">{{ supplierProfile.zip }} {{ supplierProfile.city }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.company_id">
+                                    <td class="text-center text-slate-700" colspan="100%">IČ: {{ supplierProfile.company_id }}</td>
+                                </tr>
+                                <tr v-if="supplierProfile.vat_id">
+                                    <td class="text-center text-slate-700" colspan="100%">DIČ: {{ supplierProfile.vat_id }}</td>
+                                </tr>
                                 <tr class="border-b border-teal-200 bg-teal-50/70">
                                     <td class="px-1 py-1.5 font-semibold text-teal-900" colspan="2">Uctenka c.</td>
                                     <td class="px-1 py-1.5 text-right font-semibold text-teal-900" colspan="2">{{ offlinePreviewReceipt.number }}</td>
