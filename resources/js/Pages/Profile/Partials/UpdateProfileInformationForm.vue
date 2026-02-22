@@ -23,20 +23,20 @@ const form = useForm({
 </script>
 
 <template>
-    <section>
+    <section class="space-y-6">
         <header>
-            <h2 class="text-lg font-medium text-gray-900">
+            <h2 class="text-lg font-semibold text-slate-900">
                 Profile Information
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-slate-600">
                 Update your account's profile information and email address.
             </p>
         </header>
 
         <form
             @submit.prevent="form.patch(route('profile.update'))"
-            class="mt-6 space-y-6"
+            class="space-y-5"
         >
             <div>
                 <InputLabel for="name" value="Name" />
@@ -70,13 +70,13 @@ const form = useForm({
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 text-sm text-gray-800">
+                <p class="mt-2 text-sm text-slate-700">
                     Your email address is unverified.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        class="rounded-md text-sm font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                     >
                         Click here to re-send the verification email.
                     </Link>
@@ -84,13 +84,13 @@ const form = useForm({
 
                 <div
                     v-show="status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
+                    class="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"
                 >
                     A new verification link has been sent to your email address.
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 pt-1">
                 <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
 
                 <Transition
@@ -101,7 +101,7 @@ const form = useForm({
                 >
                     <p
                         v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600"
+                        class="text-sm font-medium text-emerald-700"
                     >
                         Saved.
                     </p>

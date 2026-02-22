@@ -1,5 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Checkbox from '@/Components/Checkbox.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SelectInput from '@/Components/SelectInput.vue';
+import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -83,57 +89,56 @@ const submit = () => {
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                             <div>
-                                <label for="name" class="mb-1.5 block text-xs font-medium text-slate-700">Product Name *</label>
-                                <input
+                                <InputLabel for="name" value="Product Name *" />
+                                <TextInput
                                     id="name"
                                     v-model="form.name"
                                     type="text"
-                                    class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                                    class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.name }"
                                     placeholder="Enter product name"
                                     required
                                 />
-                                <div v-if="form.errors.name" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.name }}</div>
+                                <InputError class="mt-1.5" :message="form.errors.name" />
                             </div>
 
                             <div>
-                                <label for="short_name" class="mb-1.5 block text-xs font-medium text-slate-700">Short Name</label>
-                                <input
+                                <InputLabel for="short_name" value="Short Name" />
+                                <TextInput
                                     id="short_name"
                                     v-model="form.short_name"
                                     type="text"
-                                    class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                                    class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.short_name }"
                                     placeholder="Optional short name"
                                 />
-                                <div v-if="form.errors.short_name" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.short_name }}</div>
+                                <InputError class="mt-1.5" :message="form.errors.short_name" />
                             </div>
 
                             <div>
-                                <label for="ean" class="mb-1.5 block text-xs font-medium text-slate-700">EAN Code</label>
-                                <input
+                                <InputLabel for="ean" value="EAN Code" />
+                                <TextInput
                                     id="ean"
                                     v-model="form.ean"
                                     type="text"
-                                    class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                                    class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.ean }"
                                     placeholder="Optional barcode"
                                 />
-                                <div v-if="form.errors.ean" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.ean }}</div>
+                                <InputError class="mt-1.5" :message="form.errors.ean" />
                             </div>
 
                             <div>
-                                <span class="mb-1.5 block text-xs font-medium text-slate-700">Status</span>
+                                <InputLabel value="Status" />
                                 <label class="inline-flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                                    <input
+                                    <Checkbox
                                         id="is_active"
-                                        v-model="form.is_active"
-                                        type="checkbox"
-                                        class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                                        v-model:checked="form.is_active"
+                                        class="text-teal-600 focus:ring-teal-500"
                                     />
                                     <span>Active product</span>
                                 </label>
-                                <div v-if="form.errors.is_active" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.is_active }}</div>
+                                <InputError class="mt-1.5" :message="form.errors.is_active" />
                             </div>
                         </div>
                     </div>
@@ -144,39 +149,39 @@ const submit = () => {
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                             <div>
-                                <label for="price" class="mb-1.5 block text-xs font-medium text-slate-700">Price (Kc) *</label>
+                                <InputLabel for="price" value="Price (Kc) *" />
                                 <div class="relative">
                                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Kc</span>
-                                    <input
+                                    <TextInput
                                         id="price"
                                         v-model="form.price"
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        class="h-10 w-full rounded-md border border-slate-300 pl-9 pr-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                                        class="mt-1 block pl-9"
                                         :class="{ 'border-red-500': form.errors.price }"
                                         placeholder="0.00"
                                         required
                                     />
                                 </div>
-                                <div v-if="form.errors.price" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.price }}</div>
+                                <InputError class="mt-1.5" :message="form.errors.price" />
                             </div>
 
                             <div>
-                                <label for="vat_rate" class="mb-1.5 block text-xs font-medium text-slate-700">VAT Rate *</label>
-                                <select
+                                <InputLabel for="vat_rate" value="VAT Rate *" />
+                                <SelectInput
                                     id="vat_rate"
                                     v-model="form.vat_rate"
-                                    class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
-                                    :class="{ 'border-red-500': form.errors.vat_rate }"
+                                    class="mt-1 block"
+                                    :class="{ 'border-rose-500': form.errors.vat_rate }"
                                     required
                                 >
                                     <option :value="0">0%</option>
                                     <option :value="10">10%</option>
                                     <option :value="15">15%</option>
                                     <option :value="21">21%</option>
-                                </select>
-                                <div v-if="form.errors.vat_rate" class="mt-1.5 text-xs font-medium text-red-600">{{ form.errors.vat_rate }}</div>
+                                </SelectInput>
+                                <InputError class="mt-1.5" :message="form.errors.vat_rate" />
                             </div>
                         </div>
                     </div>
@@ -188,13 +193,12 @@ const submit = () => {
                         >
                             Cancel
                         </Link>
-                        <button
-                            type="submit"
+                        <PrimaryButton
                             :disabled="form.processing"
-                            class="inline-flex min-w-36 items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                            class="min-w-36"
                         >
                             {{ submitLabel }}
-                        </button>
+                        </PrimaryButton>
                     </div>
                 </form>
             </div>

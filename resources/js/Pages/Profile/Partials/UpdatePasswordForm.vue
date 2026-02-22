@@ -34,19 +34,19 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <section>
+    <section class="space-y-6">
         <header>
-            <h2 class="text-lg font-medium text-gray-900">
+            <h2 class="text-lg font-semibold text-slate-900">
                 Update Password
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-slate-600">
                 Ensure your account is using a long, random password to stay
                 secure.
             </p>
         </header>
 
-        <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
+        <form @submit.prevent="updatePassword" class="space-y-5">
             <div>
                 <InputLabel for="current_password" value="Current Password" />
 
@@ -100,7 +100,7 @@ const updatePassword = () => {
                 />
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 pt-1">
                 <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
 
                 <Transition
@@ -111,7 +111,7 @@ const updatePassword = () => {
                 >
                     <p
                         v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600"
+                        class="text-sm font-medium text-emerald-700"
                     >
                         Saved.
                     </p>

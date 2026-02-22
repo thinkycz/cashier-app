@@ -1,20 +1,32 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import BrandLogo from '@/Components/BrandLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+
+const userInitials = computed(() => {
+    const name = page.props.auth?.user?.name ?? '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+        return '?';
+    }
+
+    return parts[0][0].toUpperCase();
+});
 </script>
 
 <template>
     <div>
         <div class="min-h-screen bg-gradient-to-br from-cyan-50 via-sky-50 to-teal-100">
             <nav
-                class="border-b border-teal-100/80 bg-white/85 backdrop-blur"
+                class="relative z-50 border-b border-teal-100/80 bg-white/85 backdrop-blur"
             >
                 <!-- Primary Navigation Menu -->
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -54,28 +66,17 @@ const showingNavigationDropdown = ref(false);
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
                             <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
+                            <div class="relative z-50 ms-3">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
-                                        <span class="inline-flex rounded-md">
+                                        <span class="inline-flex">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center rounded-md border border-teal-100 bg-white/70 px-3 py-2 text-sm font-medium leading-4 text-slate-600 transition duration-150 ease-in-out hover:text-teal-700 focus:outline-none"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-100 bg-white/80 text-sm font-semibold uppercase tracking-wide text-teal-700 shadow-sm transition duration-150 ease-in-out hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+                                                :aria-label="`Open user menu for ${$page.props.auth.user.name}`"
+                                                :title="$page.props.auth.user.name"
                                             >
-                                                {{ $page.props.auth.user.name }}
-
-                                                <svg
-                                                    class="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
+                                                {{ userInitials }}
                                             </button>
                                         </span>
                                     </template>
@@ -203,7 +204,7 @@ const showingNavigationDropdown = ref(false);
 
             <!-- Page Heading -->
             <header
-                class="border-b border-teal-100/60 bg-white/75 shadow-sm backdrop-blur"
+                class="relative z-10 border-b border-teal-100/60 bg-white/75 shadow-sm backdrop-blur"
                 v-if="$slots.header"
             >
                 <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
