@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -16,15 +17,12 @@ class DashboardController extends Controller
     public function index()
     {
         $userId = auth()->id();
+        $this->ensureAtLeastOneOpenReceipt($userId);
 
         $products = Product::where('user_id', $userId)
             ->where('is_active', true)
             ->get();
-        $openTransactions = Transaction::where('user_id', $userId)
-            ->where('status', 'open')
-            ->with(['customer', 'transactionItems.product'])
-            ->orderByDesc('created_at')
-            ->get();
+        $openTransactions = $this->getOpenReceiptsForUser($userId);
         $customers = Customer::where('user_id', $userId)->get();
 
         return Inertia::render('Dashboard', [
@@ -36,8 +34,10 @@ class DashboardController extends Controller
 
     public function storeReceipt(): JsonResponse
     {
+        $userId = auth()->id();
+
         $transaction = Transaction::create([
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
             'customer_id' => null,
             'subtotal' => 0,
             'discount' => 0,
@@ -45,9 +45,12 @@ class DashboardController extends Controller
             'status' => 'open',
             'notes' => null,
         ])->load(['customer', 'transactionItems.product']);
+        $openTransactions = $this->getOpenReceiptsForUser($userId);
 
         return response()->json([
             'transaction' => $transaction,
+            'open_transactions' => $openTransactions,
+            'active_transaction_id' => $transaction->id,
         ], 201);
     }
 
@@ -151,8 +154,66 @@ class DashboardController extends Controller
             ]);
         });
 
+        $activeTransaction = $this->ensureAtLeastOneOpenReceipt($userId);
+        $openTransactions = $this->getOpenReceiptsForUser($userId);
+
         return response()->json([
             'transaction' => $transaction->fresh(['customer', 'transactionItems.product']),
+            'open_transactions' => $openTransactions,
+            'active_transaction_id' => $activeTransaction->id,
         ]);
+    }
+
+    public function destroyReceipt(Request $request, Transaction $transaction): JsonResponse
+    {
+        if ($transaction->status !== 'open') {
+            return response()->json([
+                'message' => 'Only open receipts can be deleted.',
+            ], 422);
+        }
+
+        $userId = $request->user()->id;
+
+        $transaction->delete();
+
+        $activeTransaction = $this->ensureAtLeastOneOpenReceipt($userId);
+        $openTransactions = $this->getOpenReceiptsForUser($userId);
+
+        return response()->json([
+            'open_transactions' => $openTransactions,
+            'active_transaction_id' => $activeTransaction->id,
+        ]);
+    }
+
+    private function ensureAtLeastOneOpenReceipt(int $userId): Transaction
+    {
+        $latestOpenTransaction = Transaction::where('user_id', $userId)
+            ->where('status', 'open')
+            ->with(['customer', 'transactionItems.product'])
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($latestOpenTransaction) {
+            return $latestOpenTransaction;
+        }
+
+        return Transaction::create([
+            'user_id' => $userId,
+            'customer_id' => null,
+            'subtotal' => 0,
+            'discount' => 0,
+            'total' => 0,
+            'status' => 'open',
+            'notes' => null,
+        ])->load(['customer', 'transactionItems.product']);
+    }
+
+    private function getOpenReceiptsForUser(int $userId): Collection
+    {
+        return Transaction::where('user_id', $userId)
+            ->where('status', 'open')
+            ->with(['customer', 'transactionItems.product'])
+            ->orderByDesc('created_at')
+            ->get();
     }
 }

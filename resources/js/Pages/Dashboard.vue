@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Dropdown from '@/Components/Dropdown.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import { useCartStore } from '@/stores/cart';
@@ -17,6 +18,7 @@ const searchQuery = ref('');
 const openReceipts = ref([...(props.openTransactions || [])]);
 const isCreatingReceipt = ref(false);
 const isCheckingOut = ref(false);
+const deletingReceiptId = ref(null);
 const manualProductName = ref('');
 const manualPackages = ref(1);
 const manualQuantity = ref(1);
@@ -119,10 +121,7 @@ const createNewTransaction = async () => {
 
     try {
         const { data } = await axios.post(route('dashboard.receipts.store'));
-        const transaction = data.transaction;
-
-        openReceipts.value = [transaction, ...openReceipts.value.filter((receipt) => receipt.id !== transaction.id)];
-        cart.setTransaction(transaction);
+        syncOpenReceiptsFromResponse(data);
     } finally {
         isCreatingReceipt.value = false;
     }
@@ -141,7 +140,7 @@ const checkoutReceipt = async (checkoutMethod) => {
     isCheckingOut.value = true;
 
     try {
-        await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
+        const { data } = await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
             checkout_method: checkoutMethod,
             subtotal: cart.subtotal,
             discount: Number(activeTransaction.discount || 0),
@@ -161,26 +160,46 @@ const checkoutReceipt = async (checkoutMethod) => {
                 };
             }),
         });
-
-        openReceipts.value = openReceipts.value.filter((receipt) => receipt.id !== activeTransaction.id);
         cart.clearTransactionItems(activeTransaction);
-
-        if (openReceipts.value.length > 0) {
-            cart.setTransaction(openReceipts.value[0]);
-        } else {
-            cart.setTransaction(null);
-        }
+        syncOpenReceiptsFromResponse(data);
     } finally {
         isCheckingOut.value = false;
     }
 };
 
-const selectTransaction = (transaction) => {
+const setActiveReceipt = (transaction) => {
     cart.setTransaction(transaction);
 };
 
 const isActiveReceipt = (transaction) => {
     return cart.currentTransaction?.id === transaction.id;
+};
+
+const syncOpenReceiptsFromResponse = (data) => {
+    const openTransactions = Array.isArray(data?.open_transactions) ? data.open_transactions : [];
+    openReceipts.value = openTransactions;
+
+    const activeTransaction = openTransactions.find(
+        (transaction) => transaction.id === data?.active_transaction_id,
+    ) || openTransactions[0] || null;
+
+    cart.setTransaction(activeTransaction);
+};
+
+const deleteReceipt = async (transaction) => {
+    if (!transaction?.id || deletingReceiptId.value === transaction.id) {
+        return;
+    }
+
+    deletingReceiptId.value = transaction.id;
+
+    try {
+        const { data } = await axios.delete(route('dashboard.receipts.destroy', transaction.id));
+        cart.clearTransactionItems(transaction);
+        syncOpenReceiptsFromResponse(data);
+    } finally {
+        deletingReceiptId.value = null;
+    }
 };
 
 onMounted(() => {
@@ -367,21 +386,69 @@ onMounted(() => {
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
                             <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
                         </div>
-                        <div class="space-y-2 p-4">
-                            <button
+                        <div class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
+                            <article
                                 v-for="transaction in openReceipts"
                                 :key="transaction.id"
-                                type="button"
-                                class="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors"
-                                :class="isActiveReceipt(transaction) ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:bg-slate-50'"
-                                @click="selectTransaction(transaction)"
+                                class="relative flex min-w-0 items-stretch rounded-lg border bg-white shadow-sm transition-all"
+                                :class="isActiveReceipt(transaction)
+                                    ? 'border-teal-300 shadow-teal-100'
+                                    : 'border-slate-200 hover:border-slate-300'"
                             >
-                                <span>
-                                    <span class="block text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</span>
-                                    <span class="block text-xs text-slate-500">{{ formatPrice(transaction.total) }}</span>
-                                </span>
-                                <span class="text-xs text-slate-500">Open</span>
-                            </button>
+                                <button
+                                    type="button"
+                                    class="inline-flex min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-l-lg text-left"
+                                    @click="setActiveReceipt(transaction)"
+                                >
+                                    <div
+                                        class="flex h-16 w-14 shrink-0 items-center justify-center rounded-l-lg text-white"
+                                        :class="isActiveReceipt(transaction) ? 'bg-teal-600' : 'bg-slate-500'"
+                                    >
+                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M4.5 2.5A1.5 1.5 0 0 0 3 4v12a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 17 16V7.207a1.5 1.5 0 0 0-.44-1.06l-2.707-2.707A1.5 1.5 0 0 0 12.793 3H4.5Zm2.25 5a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div class="min-w-0 py-3">
+                                        <p class="truncate text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-500">{{ formatPrice(transaction.total) }}</p>
+                                    </div>
+                                </button>
+
+                                <div class="flex shrink-0 items-center rounded-r-lg px-2" @click.stop>
+                                    <Dropdown align="right" width="48" content-classes="py-1 bg-white">
+                                        <template #trigger>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                                :title="`Receipt actions for ${transaction.transaction_id}`"
+                                                :aria-label="`Receipt actions for ${transaction.transaction_id}`"
+                                            >
+                                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path d="M10 4.75a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM10 11.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM8.75 16a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z" />
+                                                </svg>
+                                            </button>
+                                        </template>
+                                        <template #content>
+                                            <button
+                                                v-if="!isActiveReceipt(transaction)"
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-teal-50 hover:text-teal-700 focus:bg-teal-50 focus:text-teal-700 focus:outline-none"
+                                                @click="setActiveReceipt(transaction)"
+                                            >
+                                                Make Active
+                                            </button>
+                                            <button
+                                                type="button"
+                                                :disabled="deletingReceiptId === transaction.id"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-rose-600 transition duration-150 ease-in-out hover:bg-rose-50 hover:text-rose-700 focus:bg-rose-50 focus:text-rose-700 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                                @click="deleteReceipt(transaction)"
+                                            >
+                                                {{ deletingReceiptId === transaction.id ? 'Deleting...' : 'Delete Bill' }}
+                                            </button>
+                                        </template>
+                                    </Dropdown>
+                                </div>
+                            </article>
                             <p v-if="openReceipts.length === 0" class="text-sm text-slate-500">No open receipts.</p>
                         </div>
                     </div>

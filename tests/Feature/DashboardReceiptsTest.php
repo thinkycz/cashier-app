@@ -78,6 +78,31 @@ class DashboardReceiptsTest extends TestCase
             );
     }
 
+    public function test_dashboard_creates_open_receipt_when_user_has_none(): void
+    {
+        $user = User::factory()->create();
+        $this->createTransaction($user, ['status' => 'cash']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('dashboard'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->has('openTransactions', 1)
+            );
+
+        $this->assertDatabaseHas('transactions', [
+            'user_id' => $user->id,
+            'status' => 'open',
+            'subtotal' => 0,
+            'discount' => 0,
+            'total' => 0,
+        ]);
+    }
+
     public function test_new_receipt_endpoint_creates_open_bill_with_generated_bill_number_and_user_id(): void
     {
         $user = User::factory()->create();
@@ -88,7 +113,9 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('transaction.status', 'open');
+            ->assertJsonPath('transaction.status', 'open')
+            ->assertJsonPath('open_transactions.0.id', $response->json('active_transaction_id'))
+            ->assertJsonPath('active_transaction_id', $response->json('transaction.id'));
 
         $this->assertDatabaseCount('transactions', 1);
         $transactionId = $response->json('transaction.id');
@@ -153,7 +180,12 @@ class DashboardReceiptsTest extends TestCase
             ->assertJsonPath('transaction.subtotal', '100.00')
             ->assertJsonPath('transaction.total', '95.00')
             ->assertJsonPath('transaction.transaction_items.0.packages', 2)
-            ->assertJsonPath('transaction.transaction_items.1.packages', 4);
+            ->assertJsonPath('transaction.transaction_items.1.packages', 4)
+            ->assertJson(fn ($json) => $json
+                ->has('open_transactions', 1)
+                ->whereType('active_transaction_id', 'integer')
+                ->etc()
+            );
 
         $transaction->refresh();
 
@@ -183,6 +215,78 @@ class DashboardReceiptsTest extends TestCase
             'user_id' => $user->id,
             'is_active' => 0,
         ]);
+    }
+
+    public function test_checkout_last_open_receipt_creates_replacement_open_receipt(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createProduct($user, ['price' => 10]);
+        $transaction = $this->createTransaction($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'card',
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'packages' => 1,
+                        'quantity' => 1,
+                        'unit_price' => 10,
+                        'vat_rate' => 21,
+                        'total' => 10,
+                    ],
+                ],
+            ]);
+
+        $transaction->refresh();
+
+        $response
+            ->assertOk()
+            ->assertJson(fn ($json) => $json
+                ->has('open_transactions', 1)
+                ->whereType('active_transaction_id', 'integer')
+                ->etc()
+            );
+
+        $this->assertSame('card', $transaction->status);
+        $this->assertDatabaseCount('transactions', 2);
+        $this->assertSame(1, Transaction::where('user_id', $user->id)->where('status', 'open')->count());
+    }
+
+    public function test_checkout_when_other_open_receipts_exist_does_not_create_extra(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createProduct($user, ['price' => 10]);
+        $transactionToCheckout = $this->createTransaction($user);
+        $remainingOpenTransaction = $this->createTransaction($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transactionToCheckout), [
+                'checkout_method' => 'cash',
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'packages' => 1,
+                        'quantity' => 1,
+                        'unit_price' => 10,
+                        'vat_rate' => 21,
+                        'total' => 10,
+                    ],
+                ],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'open_transactions')
+            ->assertJsonPath('open_transactions.0.id', $remainingOpenTransaction->id)
+            ->assertJsonPath('active_transaction_id', $remainingOpenTransaction->id);
+
+        $this->assertSame(1, Transaction::where('user_id', $user->id)->where('status', 'open')->count());
+        $this->assertDatabaseCount('transactions', 2);
     }
 
     public function test_checkout_rejects_when_discount_exceeds_computed_subtotal(): void
@@ -282,6 +386,58 @@ class DashboardReceiptsTest extends TestCase
             ]);
 
         $response->assertNotFound();
+    }
+
+    public function test_delete_open_receipt_creates_replacement_when_last_one_deleted(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->deleteJson(route('dashboard.receipts.destroy', $transaction));
+
+        $response
+            ->assertOk()
+            ->assertJson(fn ($json) => $json
+                ->has('open_transactions', 1)
+                ->whereType('active_transaction_id', 'integer')
+            );
+
+        $this->assertDatabaseMissing('transactions', [
+            'id' => $transaction->id,
+        ]);
+        $this->assertSame(1, Transaction::where('user_id', $user->id)->where('status', 'open')->count());
+    }
+
+    public function test_delete_non_open_receipt_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['status' => 'cash']);
+
+        $response = $this
+            ->actingAs($user)
+            ->deleteJson(route('dashboard.receipts.destroy', $transaction));
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Only open receipts can be deleted.');
+
+        $this->assertDatabaseHas('transactions', [
+            'id' => $transaction->id,
+            'status' => 'cash',
+        ]);
+    }
+
+    public function test_user_cannot_delete_another_users_receipt(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $transaction = $this->createTransaction($otherUser);
+
+        $this->actingAs($user)
+            ->deleteJson(route('dashboard.receipts.destroy', $transaction))
+            ->assertNotFound();
     }
 
     private function createProduct(User $user, array $overrides = []): Product
