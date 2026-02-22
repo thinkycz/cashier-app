@@ -2,16 +2,40 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useCartStore = defineStore('cart', () => {
-    const items = ref([]);
+    const itemsByReceipt = ref({});
     const currentTransaction = ref(null);
     const selectedCustomer = ref(null);
 
+    const currentReceiptKey = computed(() => {
+        if (!currentTransaction.value) {
+            return null;
+        }
+
+        if (currentTransaction.value.id) {
+            return `transaction:${currentTransaction.value.id}`;
+        }
+
+        if (currentTransaction.value.transaction_id) {
+            return `transaction-code:${currentTransaction.value.transaction_id}`;
+        }
+
+        return null;
+    });
+
+    const items = computed(() => {
+        if (!currentReceiptKey.value) {
+            return [];
+        }
+
+        return itemsByReceipt.value[currentReceiptKey.value] || [];
+    });
+
     const subtotal = computed(() => {
-        return items.value.reduce((total, item) => total + (item.total), 0);
+        return items.value.reduce((total, item) => total + item.total, 0);
     });
 
     const total = computed(() => {
-        return subtotal.value - (currentTransaction.value?.discount || 0);
+        return subtotal.value - Number(currentTransaction.value?.discount || 0);
     });
 
     const itemCount = computed(() => {
@@ -19,31 +43,48 @@ export const useCartStore = defineStore('cart', () => {
     });
 
     function addItem(product, quantity = 1) {
-        const existingItem = items.value.find(item => item.product.id === product.id);
-        
+        const currentItems = getCurrentItems();
+
+        if (!currentItems) {
+            return;
+        }
+
+        const existingItem = currentItems.find(item => item.product.id === product.id);
+        const unitPrice = Number(product.price || 0);
+
         if (existingItem) {
             existingItem.quantity += quantity;
             existingItem.total = existingItem.quantity * existingItem.unit_price;
         } else {
-            items.value.push({
+            currentItems.push({
                 product,
                 quantity,
-                unit_price: product.price,
-                vat_rate: product.vat_rate,
-                total: product.price * quantity
+                unit_price: unitPrice,
+                vat_rate: Number(product.vat_rate || 0),
+                total: unitPrice * quantity
             });
         }
     }
 
     function removeItem(productId) {
-        const index = items.value.findIndex(item => item.product.id === productId);
+        const currentItems = getCurrentItems();
+        if (!currentItems) {
+            return;
+        }
+
+        const index = currentItems.findIndex(item => item.product.id === productId);
         if (index > -1) {
-            items.value.splice(index, 1);
+            currentItems.splice(index, 1);
         }
     }
 
     function updateQuantity(productId, quantity) {
-        const item = items.value.find(item => item.product.id === productId);
+        const currentItems = getCurrentItems();
+        if (!currentItems) {
+            return;
+        }
+
+        const item = currentItems.find(item => item.product.id === productId);
         if (item) {
             item.quantity = quantity;
             item.total = item.quantity * item.unit_price;
@@ -51,13 +92,30 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     function clearCart() {
-        items.value = [];
+        itemsByReceipt.value = {};
         currentTransaction.value = null;
         selectedCustomer.value = null;
     }
 
     function setTransaction(transaction) {
         currentTransaction.value = transaction;
+
+        if (!currentReceiptKey.value) {
+            return;
+        }
+
+        if (!itemsByReceipt.value[currentReceiptKey.value]) {
+            const transactionItems = transaction?.transaction_items || [];
+            itemsByReceipt.value[currentReceiptKey.value] = transactionItems.map((item) => ({
+                product: item.product,
+                quantity: Number(item.quantity),
+                unit_price: Number(item.unit_price),
+                vat_rate: Number(item.vat_rate),
+                total: Number(item.total),
+            }));
+        }
+
+        selectedCustomer.value = transaction?.customer || null;
     }
 
     function setCustomer(customer) {
@@ -85,4 +143,16 @@ export const useCartStore = defineStore('cart', () => {
         setCustomer,
         setDiscount
     };
+
+    function getCurrentItems() {
+        if (!currentReceiptKey.value) {
+            return null;
+        }
+
+        if (!itemsByReceipt.value[currentReceiptKey.value]) {
+            itemsByReceipt.value[currentReceiptKey.value] = [];
+        }
+
+        return itemsByReceipt.value[currentReceiptKey.value];
+    }
 });

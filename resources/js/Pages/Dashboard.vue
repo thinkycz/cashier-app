@@ -1,8 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useCartStore } from '@/stores/cart';
+import axios from 'axios';
 
 const cart = useCartStore();
 
@@ -14,6 +15,8 @@ const props = defineProps({
 
 const searchQuery = ref('');
 const searchMode = ref('name');
+const openReceipts = ref([...(props.openTransactions || [])]);
+const isCreatingReceipt = ref(false);
 
 const filteredProducts = computed(() => {
     if (!searchQuery.value) return props.products;
@@ -51,19 +54,37 @@ const productSubtitle = (product) => {
     return product.short_name || product.description || '';
 };
 
-const createNewTransaction = () => {
-    cart.clearCart();
-    cart.setTransaction({
-        id: null,
-        transaction_id: '',
-        discount: 0,
-        status: 'open',
-    });
+const createNewTransaction = async () => {
+    if (isCreatingReceipt.value) {
+        return;
+    }
+
+    isCreatingReceipt.value = true;
+
+    try {
+        const { data } = await axios.post(route('dashboard.receipts.store'));
+        const transaction = data.transaction;
+
+        openReceipts.value = [transaction, ...openReceipts.value.filter((receipt) => receipt.id !== transaction.id)];
+        cart.setTransaction(transaction);
+    } finally {
+        isCreatingReceipt.value = false;
+    }
 };
 
 const selectTransaction = (transaction) => {
     cart.setTransaction(transaction);
 };
+
+const isActiveReceipt = (transaction) => {
+    return cart.currentTransaction?.id === transaction.id;
+};
+
+onMounted(() => {
+    if (openReceipts.value.length > 0 && !cart.currentTransaction) {
+        cart.setTransaction(openReceipts.value[0]);
+    }
+});
 </script>
 
 <template>
@@ -141,7 +162,14 @@ const selectTransaction = (transaction) => {
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Discount / Surcharge</button>
                                 <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Select Customer</button>
-                                <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700" @click="createNewTransaction">New Receipt</button>
+                                <button
+                                    type="button"
+                                    :disabled="isCreatingReceipt"
+                                    class="inline-flex items-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    @click="createNewTransaction"
+                                >
+                                    {{ isCreatingReceipt ? 'Creating...' : 'New Receipt' }}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -152,10 +180,11 @@ const selectTransaction = (transaction) => {
                         </div>
                         <div class="space-y-2 p-4">
                             <button
-                                v-for="transaction in openTransactions"
+                                v-for="transaction in openReceipts"
                                 :key="transaction.id"
                                 type="button"
-                                class="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:bg-slate-50"
+                                class="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors"
+                                :class="isActiveReceipt(transaction) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white hover:bg-slate-50'"
                                 @click="selectTransaction(transaction)"
                             >
                                 <span>
@@ -164,7 +193,7 @@ const selectTransaction = (transaction) => {
                                 </span>
                                 <span class="text-xs text-slate-500">Open</span>
                             </button>
-                            <p v-if="openTransactions.length === 0" class="text-sm text-slate-500">No open receipts.</p>
+                            <p v-if="openReceipts.length === 0" class="text-sm text-slate-500">No open receipts.</p>
                         </div>
                     </div>
 
