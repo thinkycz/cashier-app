@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useCartStore } from '@/stores/cart';
 import {
     completeLocalReceipt,
@@ -65,6 +65,12 @@ const isSavingCustomer = ref(false);
 const customerInputContainerRef = ref(null);
 const isCustomerInputFocused = ref(false);
 const customerAutocompleteId = 'customer-suggestions';
+const showCheckoutModal = ref(false);
+const selectedCheckoutMethod = ref(null);
+const checkoutPaidAmount = ref(0);
+const checkoutModalError = ref('');
+const cashPaidInputRef = ref(null);
+const checkoutConfirmButtonRef = ref(null);
 
 const openReceipts = computed(() => {
     const filteredServerReceipts = serverOpenReceipts.value.filter((receipt) => {
@@ -194,6 +200,64 @@ const addManualBillItem = () => {
 
 const canCheckout = computed(() => {
     return Boolean(cart.currentTransaction) && cart.items.length > 0 && !isCheckingOut.value;
+});
+
+const checkoutTotal = computed(() => {
+    return Number(cart.total || 0);
+});
+
+const isCashCheckout = computed(() => {
+    return selectedCheckoutMethod.value === 'cash';
+});
+
+const parsedCheckoutPaidAmount = computed(() => {
+    const numericValue = Number(checkoutPaidAmount.value);
+
+    if (Number.isNaN(numericValue)) {
+        return 0;
+    }
+
+    return numericValue;
+});
+
+const checkoutChangeAmount = computed(() => {
+    return parsedCheckoutPaidAmount.value - checkoutTotal.value;
+});
+
+const checkoutWarningMessage = computed(() => {
+    if (!isCashCheckout.value || parsedCheckoutPaidAmount.value >= checkoutTotal.value) {
+        return '';
+    }
+
+    return `Paid amount is ${formatPrice(Math.abs(checkoutChangeAmount.value))} less than total.`;
+});
+
+const checkoutMethodLabel = computed(() => {
+    switch (selectedCheckoutMethod.value) {
+    case 'cash':
+        return 'Hotove';
+    case 'card':
+        return 'Kartou';
+    case 'order':
+        return 'Objednavka';
+    default:
+        return '';
+    }
+});
+
+const checkoutSubmitButtonLabel = computed(() => {
+    switch (selectedCheckoutMethod.value) {
+    case 'card':
+        return 'Zaplatit kartou';
+    case 'order':
+        return 'Vystavit objednavku';
+    default:
+        return 'Vystavit uctenku';
+    }
+});
+
+const canSubmitCheckout = computed(() => {
+    return canCheckout.value && Boolean(selectedCheckoutMethod.value) && !isCheckingOut.value;
 });
 
 const focusPackagesInput = () => {
@@ -771,7 +835,39 @@ const createNewTransaction = async () => {
     }
 };
 
-const checkoutReceipt = async (checkoutMethod) => {
+const resetCheckoutModalState = () => {
+    selectedCheckoutMethod.value = null;
+    checkoutPaidAmount.value = 0;
+    checkoutModalError.value = '';
+};
+
+const closeCheckoutModal = () => {
+    showCheckoutModal.value = false;
+    resetCheckoutModalState();
+};
+
+const openCheckoutModal = async (checkoutMethod) => {
+    if (!canCheckout.value) {
+        return;
+    }
+
+    selectedCheckoutMethod.value = checkoutMethod;
+    checkoutPaidAmount.value = checkoutTotal.value;
+    checkoutModalError.value = '';
+    showCheckoutModal.value = true;
+
+    await nextTick();
+
+    if (checkoutMethod === 'cash') {
+        cashPaidInputRef.value?.focus();
+        cashPaidInputRef.value?.select?.();
+        return;
+    }
+
+    checkoutConfirmButtonRef.value?.focus();
+};
+
+const performCheckout = async (checkoutMethod) => {
     if (!canCheckout.value) {
         return;
     }
@@ -850,6 +946,33 @@ const checkoutReceipt = async (checkoutMethod) => {
         }
     } finally {
         isCheckingOut.value = false;
+    }
+};
+
+const submitCheckout = async () => {
+    if (!canSubmitCheckout.value) {
+        return;
+    }
+
+    const activeTransaction = cart.currentTransaction;
+    if (!activeTransaction?.id || cart.items.length === 0) {
+        checkoutModalError.value = 'Please select an active receipt with at least one item.';
+        return;
+    }
+
+    const checkoutMethod = selectedCheckoutMethod.value;
+    if (!checkoutMethod) {
+        checkoutModalError.value = 'Select a checkout method and try again.';
+        return;
+    }
+
+    checkoutModalError.value = '';
+
+    try {
+        await performCheckout(checkoutMethod);
+        closeCheckoutModal();
+    } catch {
+        checkoutModalError.value = 'Unable to checkout. Please try again.';
     }
 };
 
@@ -1239,7 +1362,7 @@ onBeforeUnmount(() => {
                                 type="button"
                                 :disabled="!canCheckout"
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                @click="checkoutReceipt('cash')"
+                                @click="openCheckoutModal('cash')"
                             >
                                 Hotove
                             </button>
@@ -1247,7 +1370,7 @@ onBeforeUnmount(() => {
                                 type="button"
                                 :disabled="!canCheckout"
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-                                @click="checkoutReceipt('card')"
+                                @click="openCheckoutModal('card')"
                             >
                                 Kartou
                             </button>
@@ -1255,7 +1378,7 @@ onBeforeUnmount(() => {
                                 type="button"
                                 :disabled="!canCheckout"
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-cyan-700 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
-                                @click="checkoutReceipt('order')"
+                                @click="openCheckoutModal('order')"
                             >
                                 Objednavka
                             </button>
@@ -1499,6 +1622,85 @@ onBeforeUnmount(() => {
                 </section>
             </div>
         </div>
+
+        <Modal :show="showCheckoutModal" max-width="2xl" @close="closeCheckoutModal">
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Vystavit uctenku</h3>
+                        <p class="mt-1 text-sm text-slate-500">Zkontrolujte celkovou castku a potvrdte zpusob uhrady.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        @click="closeCheckoutModal"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    <div class="rounded-lg bg-gradient-to-r from-teal-700 to-cyan-700 px-4 py-4 text-white shadow-sm shadow-teal-200/70">
+                        <div class="flex items-end justify-between gap-4">
+                            <p class="text-sm font-medium uppercase tracking-wide text-cyan-100">Celkem</p>
+                            <p class="text-right text-3xl font-semibold">{{ formatPrice(checkoutTotal) }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="isCashCheckout" class="space-y-4">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Zaplaceno</label>
+                            <input
+                                ref="cashPaidInputRef"
+                                v-model.number="checkoutPaidAmount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Vratit</label>
+                            <div class="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 shadow-sm">
+                                {{ formatPrice(checkoutChangeAmount) }}
+                            </div>
+                        </div>
+                        <p v-if="checkoutWarningMessage" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
+                            {{ checkoutWarningMessage }}
+                        </p>
+                    </div>
+
+                    <div v-else class="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
+                        <p class="text-xs font-medium uppercase tracking-wide text-slate-600">Zpusob platby</p>
+                        <p class="mt-1 text-base font-semibold text-slate-900">{{ checkoutMethodLabel }}</p>
+                        <p class="mt-1.5 text-sm text-slate-600">Potvrdte vystaveni dokladu pro tuto platbu.</p>
+                    </div>
+
+                    <p v-if="checkoutModalError" class="text-sm font-semibold text-rose-600">{{ checkoutModalError }}</p>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        @click="closeCheckoutModal"
+                    >
+                        Zrusit
+                    </button>
+                    <button
+                        ref="checkoutConfirmButtonRef"
+                        type="button"
+                        :disabled="!canSubmitCheckout"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:from-teal-700 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="submitCheckout"
+                    >
+                        {{ isCheckingOut ? 'Zpracovani...' : checkoutSubmitButtonLabel }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showCustomerModal" max-width="2xl" @close="closeCustomerDialog">
             <div class="p-6">
