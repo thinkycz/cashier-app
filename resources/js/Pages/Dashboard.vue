@@ -7,6 +7,7 @@ import { useCartStore } from '@/stores/cart';
 import axios from 'axios';
 
 const cart = useCartStore();
+const DEFAULT_MANUAL_VAT_RATE = 21;
 
 const props = defineProps({
     products: Array,
@@ -23,6 +24,7 @@ const manualProductName = ref('');
 const manualPackages = ref(1);
 const manualQuantity = ref(1);
 const manualPrice = ref(0);
+const selectedManualProduct = ref(null);
 const autocompleteOpen = ref(false);
 const highlightedSuggestionIndex = ref(-1);
 const isManualProductInputFocused = ref(false);
@@ -90,17 +92,22 @@ const addManualBillItem = () => {
         return;
     }
 
+    const selectedProduct = selectedManualProduct.value;
+
     cart.addManualItem({
         productName: manualProductName.value,
         packages: manualPackages.value,
         quantity: manualQuantity.value,
         unitPrice: manualPrice.value,
+        productId: selectedProduct?.id ?? null,
+        vatRate: selectedProduct ? Number(selectedProduct.vat_rate || 0) : DEFAULT_MANUAL_VAT_RATE,
     });
 
     manualProductName.value = '';
     manualPackages.value = 1;
     manualQuantity.value = 1;
     manualPrice.value = 0;
+    selectedManualProduct.value = null;
     closeManualAutocomplete();
     productNameInputRef.value?.focus();
 };
@@ -149,12 +156,25 @@ const openManualAutocomplete = () => {
 const selectManualProduct = (product) => {
     if (!product) return;
 
+    selectedManualProduct.value = {
+        id: Number(product.id),
+        name: product.name || '',
+        vat_rate: Number(product.vat_rate || 0),
+        price: Number(product.price || 0),
+    };
     manualProductName.value = product.name || '';
     manualPrice.value = Number(product.price || 0);
     closeManualAutocomplete();
 };
 
 const onManualProductInput = () => {
+    if (
+        selectedManualProduct.value
+        && normalizeQuery(manualProductName.value) !== normalizeQuery(selectedManualProduct.value.name)
+    ) {
+        selectedManualProduct.value = null;
+    }
+
     autocompleteOpen.value = true;
     highlightedSuggestionIndex.value = manualProductSuggestions.value.length > 0 ? 0 : -1;
 };
@@ -273,7 +293,7 @@ const checkoutReceipt = async (checkoutMethod) => {
             discount: Number(activeTransaction.discount || 0),
             total: cart.total,
             items: cart.items.map((item) => {
-                const parsedProductId = Number(item.product?.id);
+                const parsedProductId = Number(item.product_id ?? item.product?.id);
                 const productId = Number.isInteger(parsedProductId) && parsedProductId > 0 ? parsedProductId : null;
 
                 return {
@@ -282,7 +302,7 @@ const checkoutReceipt = async (checkoutMethod) => {
                     packages: Number(item.packages || 1),
                     quantity: Number(item.quantity || 0),
                     unit_price: Number(item.unit_price || 0),
-                    vat_rate: Number(item.vat_rate || 0),
+                    vat_rate: Number(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
                     total: Number(item.total || 0),
                 };
             }),
@@ -487,7 +507,7 @@ onBeforeUnmount(() => {
 
                             <article
                                 v-for="(item, index) in cartItemsNewestFirst"
-                                :key="item.product.id"
+                                :key="item.line_id || `${item.product?.id}-${index}`"
                                 class="min-h-24 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70"
                             >
                                 <div class="flex items-start justify-between gap-3">

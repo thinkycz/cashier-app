@@ -57,6 +57,7 @@ class DashboardController extends Controller
     public function checkoutReceipt(Request $request, Transaction $transaction): JsonResponse
     {
         $userId = $request->user()->id;
+        $manualDefaultVatRate = 21.0;
 
         $validated = $request->validate([
             'checkout_method' => ['required', 'in:cash,card,order'],
@@ -88,16 +89,29 @@ class DashboardController extends Controller
         $discount = round((float) ($validated['discount'] ?? 0), 2);
         $subtotal = 0.0;
         $normalizedItems = [];
+        $requestedProductIds = collect($validated['items'])
+            ->pluck('product_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $productVatRates = Product::where('user_id', $userId)
+            ->whereIn('id', $requestedProductIds)
+            ->pluck('vat_rate', 'id');
 
         foreach ($validated['items'] as $item) {
+            $productId = isset($item['product_id']) ? (int) $item['product_id'] : null;
             $packages = (int) $item['packages'];
             $quantity = (int) $item['quantity'];
             $unitPrice = round((float) $item['unit_price'], 2);
-            $vatRate = round((float) ($item['vat_rate'] ?? 0), 2);
+            $hasVatRate = array_key_exists('vat_rate', $item) && $item['vat_rate'] !== null;
+            $vatRate = $productId
+                ? round((float) ($productVatRates[$productId] ?? 0), 2)
+                : round((float) ($hasVatRate ? $item['vat_rate'] : $manualDefaultVatRate), 2);
             $lineTotal = round($packages * $quantity * $unitPrice, 2);
 
             $normalizedItems[] = [
-                'product_id' => $item['product_id'] ?? null,
+                'product_id' => $productId,
                 'product_name' => $item['product_name'],
                 'packages' => $packages,
                 'quantity' => $quantity,

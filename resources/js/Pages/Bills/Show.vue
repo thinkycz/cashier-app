@@ -20,6 +20,31 @@ const formatPrice = (price) => {
     }).format(price);
 };
 
+const priceExcludingVat = (amountIncludingVat, vatRate) => {
+    const safeAmount = Number(amountIncludingVat || 0);
+    const safeVatRate = Number(vatRate || 0);
+    const divisor = 1 + (safeVatRate / 100);
+
+    if (divisor <= 0) {
+        return safeAmount;
+    }
+
+    return safeAmount / divisor;
+};
+
+const billSubtotalExcludingVat = () => {
+    return (props.bill?.transaction_items || []).reduce((sum, item) => {
+        return sum + priceExcludingVat(item.total, item.vat_rate);
+    }, 0);
+};
+
+const billTotalExcludingVat = () => {
+    const subtotalExclVat = billSubtotalExcludingVat();
+    const discount = Number(props.bill?.discount || 0);
+
+    return Math.max(0, subtotalExclVat - discount);
+};
+
 const formatDate = (date) => {
     return new Date(date).toLocaleDateString('cs-CZ', {
         year: 'numeric',
@@ -106,7 +131,7 @@ const printBill = () => {
                         <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
                             <p class="text-xs uppercase tracking-wide text-slate-500">Total</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
-                            <p class="mt-1 text-xs text-slate-500">Subtotal {{ formatPrice(bill.subtotal) }}</p>
+                            <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
                         </div>
                     </div>
                 </section>
@@ -174,6 +199,7 @@ const printBill = () => {
                                 <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">#</th>
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">EAN</th>
                                     <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Packages</th>
                                     <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Qty</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Unit Price</th>
@@ -188,12 +214,30 @@ const printBill = () => {
                                     class="border-t border-teal-100/70 transition-colors duration-150 odd:bg-teal-50/15 even:bg-white hover:bg-teal-50/45"
                                 >
                                     <td class="px-5 py-4 text-sm text-slate-700">{{ index + 1 }}</td>
-                                    <td class="px-5 py-4 text-sm font-medium text-slate-900">{{ item.product.name }}</td>
+                                    <td class="px-5 py-4 align-top">
+                                        <p class="text-sm font-medium text-slate-900">{{ item.product.name }}</p>
+                                        <p v-if="item.product?.short_name" class="mt-0.5 text-xs text-slate-500">{{ item.product.short_name }}</p>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
+                                            {{ item.product?.ean || '-' }}
+                                        </span>
+                                    </td>
                                     <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.packages || 1 }}</td>
                                     <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.quantity }}</td>
-                                    <td class="px-5 py-4 text-right text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</td>
-                                    <td class="px-5 py-4 text-right text-sm text-slate-700">{{ item.vat_rate }}%</td>
-                                    <td class="px-5 py-4 text-right text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</td>
+                                    <td class="px-5 py-4 text-right">
+                                        <p class="text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 text-right text-sm text-slate-700">
+                                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                                            {{ item.vat_rate }}%
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-right">
+                                        <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -207,11 +251,23 @@ const printBill = () => {
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h4 class="text-sm font-semibold text-slate-900">{{ item.product.name }}</h4>
+                                    <p v-if="item.product?.short_name" class="mt-0.5 text-xs text-slate-500">{{ item.product.short_name }}</p>
                                     <p class="mt-1 text-xs text-slate-500">Item #{{ index + 1 }}</p>
                                 </div>
-                                <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                </div>
                             </div>
-                            <div class="mt-3 grid grid-cols-4 gap-3 text-xs text-slate-600">
+                            <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
+                                <div>
+                                    <p class="text-slate-500">EAN</p>
+                                    <p class="mt-1">
+                                        <span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
+                                            {{ item.product?.ean || '-' }}
+                                        </span>
+                                    </p>
+                                </div>
                                 <div>
                                     <p class="text-slate-500">Packages</p>
                                     <p class="mt-1 font-medium">{{ item.packages || 1 }}</p>
@@ -223,10 +279,15 @@ const printBill = () => {
                                 <div>
                                     <p class="text-slate-500">Unit</p>
                                     <p class="mt-1 font-medium">{{ formatPrice(item.unit_price) }}</p>
+                                    <p class="mt-0.5 text-[11px] text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
                                 </div>
                                 <div>
                                     <p class="text-slate-500">VAT</p>
-                                    <p class="mt-1 font-medium">{{ item.vat_rate }}%</p>
+                                    <p class="mt-1">
+                                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                                            {{ item.vat_rate }}%
+                                        </span>
+                                    </p>
                                 </div>
                             </div>
                         </article>
@@ -241,7 +302,10 @@ const printBill = () => {
                         <dl class="ml-auto max-w-sm space-y-3 text-sm">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                 <dt class="text-slate-500">Subtotal</dt>
-                                <dd class="font-medium text-slate-900">{{ formatPrice(bill.subtotal) }}</dd>
+                                <dd class="text-right">
+                                    <p class="font-medium text-slate-900">{{ formatPrice(bill.subtotal) }}</p>
+                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billSubtotalExcludingVat()) }}</p>
+                                </dd>
                             </div>
                             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                 <dt class="text-slate-500">Discount</dt>
@@ -251,7 +315,10 @@ const printBill = () => {
                             </div>
                             <div class="flex items-center justify-between pt-1">
                                 <dt class="text-base font-semibold text-slate-900">Total</dt>
-                                <dd class="text-base font-semibold text-slate-900">{{ formatPrice(bill.total) }}</dd>
+                                <dd class="text-right">
+                                    <p class="text-base font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
+                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
+                                </dd>
                             </div>
                         </dl>
                     </div>

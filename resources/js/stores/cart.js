@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 
 export const useCartStore = defineStore('cart', () => {
     const STORAGE_KEY = 'cashier-cart-v1';
+    const DEFAULT_MANUAL_VAT_RATE = 21;
     const hasLocalStorage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
     const persistedState = loadPersistedState();
 
@@ -53,7 +54,8 @@ export const useCartStore = defineStore('cart', () => {
             return;
         }
 
-        const existingItem = currentItems.find(item => item.product.id === product.id);
+        const normalizedProductId = normalizeProductId(product?.id);
+        const existingItem = currentItems.find(item => item.product_id && item.product_id === normalizedProductId);
         const safeQuantity = Math.max(1, Number(quantity) || 1);
         const unitPrice = Number(product.price || 0);
 
@@ -63,6 +65,8 @@ export const useCartStore = defineStore('cart', () => {
             existingItem.total = calculateLineTotal(existingItem.packages, existingItem.quantity, existingItem.unit_price);
         } else {
             currentItems.push({
+                line_id: createLineId('catalog'),
+                product_id: normalizedProductId,
                 product,
                 packages: 1,
                 quantity: safeQuantity,
@@ -75,53 +79,58 @@ export const useCartStore = defineStore('cart', () => {
         persistState();
     }
 
-    function addManualItem({ productName, quantity = 1, unitPrice = 0, packages = 1 }) {
+    function addManualItem({ productName, quantity = 1, unitPrice = 0, packages = 1, productId = null, vatRate = null }) {
         const currentItems = getCurrentItems();
 
         if (!currentItems) {
             return;
         }
 
+        const normalizedProductId = normalizeProductId(productId);
         const safeQuantity = Math.max(1, Number(quantity) || 1);
         const safeUnitPrice = Math.max(0, Number(unitPrice) || 0);
         const safePackages = Math.max(1, Number(packages) || 1);
-        const lineId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const resolvedVatRate = Number(vatRate ?? DEFAULT_MANUAL_VAT_RATE);
+        const lineId = createLineId(normalizedProductId ? 'catalog' : 'manual');
+        const productNameValue = String(productName || '').trim() || 'Unknown product';
 
         currentItems.push({
+            line_id: lineId,
+            product_id: normalizedProductId,
             product: {
-                id: lineId,
-                name: String(productName || '').trim() || 'Unknown product',
+                id: normalizedProductId ?? lineId,
+                name: productNameValue,
             },
             packages: safePackages,
             quantity: safeQuantity,
             unit_price: safeUnitPrice,
-            vat_rate: 0,
+            vat_rate: resolvedVatRate,
             total: calculateLineTotal(safePackages, safeQuantity, safeUnitPrice),
         });
 
         persistState();
     }
 
-    function removeItem(productId) {
+    function removeItem(lineId) {
         const currentItems = getCurrentItems();
         if (!currentItems) {
             return;
         }
 
-        const index = currentItems.findIndex(item => item.product.id === productId);
+        const index = currentItems.findIndex(item => item.line_id === lineId || item.product?.id === lineId);
         if (index > -1) {
             currentItems.splice(index, 1);
             persistState();
         }
     }
 
-    function updateQuantity(productId, quantity) {
+    function updateQuantity(lineId, quantity) {
         const currentItems = getCurrentItems();
         if (!currentItems) {
             return;
         }
 
-        const item = currentItems.find(item => item.product.id === productId);
+        const item = currentItems.find(item => item.line_id === lineId || item.product?.id === lineId);
         if (item) {
             item.packages = Number(item.packages || 1);
             item.quantity = Math.max(1, Number(quantity) || 1);
@@ -149,6 +158,8 @@ export const useCartStore = defineStore('cart', () => {
         if (!itemsByReceipt.value[currentReceiptKey.value]) {
             const transactionItems = transaction?.transaction_items || [];
             itemsByReceipt.value[currentReceiptKey.value] = transactionItems.map((item) => ({
+                line_id: `transaction-item-${item.id}`,
+                product_id: normalizeProductId(item.product_id ?? item.product?.id),
                 product: item.product,
                 packages: Number(item.packages || 1),
                 quantity: Number(item.quantity),
@@ -279,14 +290,26 @@ export const useCartStore = defineStore('cart', () => {
             Object.entries(value).map(([key, receiptItems]) => [
                 key,
                 Array.isArray(receiptItems)
-                    ? receiptItems.map((item) => ({
-                        ...item,
-                        packages: Number(item?.packages || 1),
-                        quantity: Number(item?.quantity || 0),
-                        unit_price: Number(item?.unit_price || 0),
-                        vat_rate: Number(item?.vat_rate || 0),
-                        total: Number(item?.total || 0),
-                    }))
+                    ? receiptItems.map((item, index) => {
+                        const productId = normalizeProductId(item?.product_id ?? item?.product?.id);
+                        const hasVatRate = Object.prototype.hasOwnProperty.call(item || {}, 'vat_rate');
+                        const fallbackVatRate = productId ? 0 : DEFAULT_MANUAL_VAT_RATE;
+
+                        return {
+                            ...item,
+                            line_id: String(item?.line_id || item?.product?.id || `${key}-line-${index}`),
+                            product_id: productId,
+                            product: item?.product || {
+                                id: productId || `${key}-line-${index}`,
+                                name: 'Unknown product',
+                            },
+                            packages: Number(item?.packages || 1),
+                            quantity: Number(item?.quantity || 0),
+                            unit_price: Number(item?.unit_price || 0),
+                            vat_rate: Number(hasVatRate ? item?.vat_rate : fallbackVatRate),
+                            total: Number(item?.total || 0),
+                        };
+                    })
                     : [],
             ]),
         );
@@ -306,5 +329,14 @@ export const useCartStore = defineStore('cart', () => {
         const safeUnitPrice = Math.max(0, Number(unitPrice) || 0);
 
         return Math.round((safePackages * safeQuantity * safeUnitPrice + Number.EPSILON) * 100) / 100;
+    }
+
+    function createLineId(prefix = 'line') {
+        return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function normalizeProductId(value) {
+        const parsed = Number(value);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
     }
 });

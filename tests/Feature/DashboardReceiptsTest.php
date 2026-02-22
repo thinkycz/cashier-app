@@ -222,6 +222,100 @@ class DashboardReceiptsTest extends TestCase
         ]);
     }
 
+    public function test_checkout_uses_product_vat_even_if_client_sends_zero(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createProduct($user, [
+            'name' => 'Milk',
+            'price' => 15,
+            'vat_rate' => 21,
+        ]);
+        $transaction = $this->createTransaction($user);
+
+        $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'cash',
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'packages' => 1,
+                        'quantity' => 2,
+                        'unit_price' => 15,
+                        'vat_rate' => 0,
+                        'total' => 30,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $vatRate = DB::table('transaction_items')
+            ->where('transaction_id', $transaction->id)
+            ->value('vat_rate');
+
+        $this->assertSame('21', (string) $vatRate);
+    }
+
+    public function test_checkout_manual_item_defaults_to_21_when_vat_missing_or_null(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user);
+
+        $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'card',
+                'items' => [
+                    [
+                        'product_id' => null,
+                        'product_name' => 'Manual line',
+                        'packages' => 1,
+                        'quantity' => 1,
+                        'unit_price' => 10,
+                        'total' => 10,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $vatRate = DB::table('transaction_items')
+            ->where('transaction_id', $transaction->id)
+            ->value('vat_rate');
+
+        $this->assertSame('21', (string) $vatRate);
+    }
+
+    public function test_checkout_manual_item_respects_explicit_manual_vat_if_provided(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user);
+
+        $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'order',
+                'items' => [
+                    [
+                        'product_id' => null,
+                        'product_name' => 'Reduced VAT line',
+                        'packages' => 1,
+                        'quantity' => 1,
+                        'unit_price' => 20,
+                        'vat_rate' => 15,
+                        'total' => 20,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $vatRate = DB::table('transaction_items')
+            ->where('transaction_id', $transaction->id)
+            ->value('vat_rate');
+
+        $this->assertSame('15', (string) $vatRate);
+    }
+
     public function test_checkout_last_open_receipt_creates_replacement_open_receipt(): void
     {
         $user = User::factory()->create();
