@@ -180,6 +180,27 @@ onMounted(() => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
+        <template #header>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-2xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h2>
+                    <p class="mt-1 text-sm text-slate-600">{{ customerDisplayName(cart.selectedCustomer) }}</p>
+                </div>
+                <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                    <button type="button" class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70">Discount / Surcharge</button>
+                    <button type="button" class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70">Select Customer</button>
+                    <button
+                        type="button"
+                        :disabled="isCreatingReceipt"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="createNewTransaction"
+                    >
+                        {{ isCreatingReceipt ? 'Creating...' : 'New Receipt' }}
+                    </button>
+                </div>
+            </div>
+        </template>
+
         <div class="relative py-6">
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
                 <section class="flex h-full flex-col overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/60">
@@ -328,27 +349,6 @@ onMounted(() => {
                 </section>
 
                 <section class="space-y-4">
-                    <div class="rounded-xl border border-teal-100 bg-white/90 p-4 shadow-sm shadow-teal-100/50">
-                        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                            <div>
-                                <h3 class="text-xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h3>
-                                <p class="mt-1 text-sm text-slate-500">{{ customerDisplayName(cart.selectedCustomer) }}</p>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <button type="button" class="inline-flex items-center rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100/70">Discount / Surcharge</button>
-                                <button type="button" class="inline-flex items-center rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100/70">Select Customer</button>
-                                <button
-                                    type="button"
-                                    :disabled="isCreatingReceipt"
-                                    class="inline-flex items-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                    @click="createNewTransaction"
-                                >
-                                    {{ isCreatingReceipt ? 'Creating...' : 'New Receipt' }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
                             <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
