@@ -94,7 +94,7 @@ const printBill = () => {
                                 </span>
                             </div>
                         </div>
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-right">
+                        <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
                             <p class="text-xs uppercase tracking-wide text-slate-500">Total</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
                             <p class="mt-1 text-xs text-slate-500">Subtotal {{ formatPrice(bill.subtotal) }}</p>
@@ -104,7 +104,7 @@ const printBill = () => {
 
                 <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Transaction Details</h3>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
@@ -131,7 +131,7 @@ const printBill = () => {
                     </article>
 
                     <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Customer Details</h3>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
@@ -152,26 +152,26 @@ const printBill = () => {
                 </section>
 
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                    <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Items</h3>
                     </div>
                     <div class="hidden overflow-x-auto lg:block">
                         <table class="min-w-full border-collapse">
                             <thead>
-                                <tr class="bg-slate-50">
-                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">#</th>
-                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
-                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Qty</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Unit Price</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">VAT</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total</th>
+                                <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">#</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
+                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Qty</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Unit Price</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr
                                     v-for="(item, index) in bill.transaction_items"
                                     :key="item.id"
-                                    class="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
+                                    class="border-t border-teal-100/70 transition-colors duration-150 odd:bg-teal-50/15 even:bg-white hover:bg-teal-50/45"
                                 >
                                     <td class="px-5 py-4 text-sm text-slate-700">{{ index + 1 }}</td>
                                     <td class="px-5 py-4 text-sm font-medium text-slate-900">{{ item.product.name }}</td>
@@ -215,7 +215,7 @@ const printBill = () => {
                 </section>
 
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                    <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Summary</h3>
                     </div>
                     <div class="px-6 py-5">
@@ -239,7 +239,7 @@ const printBill = () => {
                 </section>
 
                 <section v-if="bill.notes" class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                    <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                    <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Notes</h3>
                     </div>
                     <p class="px-6 py-5 text-sm text-slate-700">{{ bill.notes }}</p>

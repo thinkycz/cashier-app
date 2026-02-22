@@ -70,7 +70,7 @@ const vatAmount = Number(props.product.price) - priceExcludingVat;
                                 </span>
                             </div>
                         </div>
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-right">
+                        <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
                             <p class="text-xs uppercase tracking-wide text-slate-500">Price (incl. VAT)</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
                             <p class="mt-1 text-xs text-slate-500">VAT rate: {{ product.vat_rate }}%</p>
@@ -80,7 +80,7 @@ const vatAmount = Number(props.product.price) - priceExcludingVat;
 
                 <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h2 class="text-base font-semibold text-slate-800">Product Details</h2>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
@@ -116,7 +116,7 @@ const vatAmount = Number(props.product.price) - priceExcludingVat;
                     </article>
 
                     <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h2 class="text-base font-semibold text-slate-800">Pricing Breakdown</h2>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">

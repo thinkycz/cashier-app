@@ -204,7 +204,7 @@ const userInitials = computed(() => {
 
             <!-- Page Heading -->
             <header
-                class="relative z-10 border-b border-teal-100/60 bg-white/75 shadow-sm backdrop-blur"
+                class="relative z-10 border-b border-teal-200/70 bg-gradient-to-r from-white/90 via-teal-50/50 to-cyan-50/45 shadow-sm backdrop-blur"
                 v-if="$slots.header"
             >
                 <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

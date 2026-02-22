@@ -118,20 +118,20 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                         <div class="hidden overflow-x-auto lg:block">
                             <table class="min-w-full border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50">
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Bill ID</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
-                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                                    <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Bill ID</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Customer</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Date</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Total</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Status</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr
                                         v-for="transaction in transactions.data"
                                         :key="transaction.id"
-                                        class="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
+                                        class="border-t border-teal-100/70 bg-teal-50/10 transition-colors duration-200 odd:bg-white even:bg-teal-50/15 hover:bg-teal-50/60"
                                     >
                                         <td class="px-5 py-4 align-top">
                                             <p class="text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
@@ -219,13 +219,13 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                 v-if="link.url"
                                 :href="link.url"
                                 :class="link.active
-                                    ? 'inline-flex min-w-9 items-center justify-center rounded-md border border-teal-600 bg-teal-600 px-3 py-2 text-xs font-medium text-white'
-                                    : 'inline-flex min-w-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50'"
+                                    ? 'inline-flex min-w-9 items-center justify-center rounded-lg border border-teal-600 bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-teal-300/30'
+                                    : 'inline-flex min-w-9 items-center justify-center rounded-lg border border-teal-200 bg-teal-50/35 px-3 py-2 text-xs font-medium text-teal-800 transition-colors hover:bg-teal-50/70'"
                                 v-html="link.label"
                             />
                             <span
                                 v-else
-                                class="inline-flex min-w-9 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-400"
+                                class="inline-flex min-w-9 cursor-not-allowed items-center justify-center rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-2 text-xs font-medium text-slate-400"
                                 v-html="link.label"
                             />
                         </template>
