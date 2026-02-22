@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Product;
 
@@ -16,53 +15,51 @@ class ProductSeeder extends Seeder
         $products = [
             [
                 'name' => 'nuoc hoa 100ml',
-                'category' => 'Parfém',
+                'short_name' => 'nuoc hoa',
                 'ean' => '1234567890123',
                 'vat_rate' => 21.00,
                 'price' => 599.99,
-                'description' => 'Vietnamský parfém 100ml',
                 'is_active' => true,
             ],
             [
                 'name' => 'nuoc hoa du bai 50ml',
-                'category' => 'Parfém',
+                'short_name' => 'du bai',
                 'ean' => '1234567890124',
                 'vat_rate' => 21.00,
                 'price' => 299.99,
-                'description' => 'Vietnamský parfém z Dubaje 50ml',
                 'is_active' => true,
             ],
             [
                 'name' => 'Rukavice',
-                'category' => 'Ochranné pomůcky',
+                'short_name' => 'rukavice',
                 'ean' => '1234567890125',
                 'vat_rate' => 21.00,
                 'price' => 49.99,
-                'description' => 'Jednorázové rukavice',
                 'is_active' => true,
             ],
             [
                 'name' => 'Izolepa',
-                'category' => 'Kancelářské potřeby',
+                'short_name' => 'izolepa',
                 'ean' => '1234567890126',
                 'vat_rate' => 21.00,
                 'price' => 79.99,
-                'description' => 'Lepicí páska',
                 'is_active' => true,
             ],
             [
                 'name' => 'Obraz z kaminků',
-                'category' => 'Dekorace',
+                'short_name' => 'obraz',
                 'ean' => '1234567890127',
                 'vat_rate' => 21.00,
                 'price' => 1299.99,
-                'description' => 'Ručně vyráběný obraz z kamínků',
                 'is_active' => true,
             ],
         ];
 
         foreach ($products as $product) {
-            Product::create($product);
+            Product::updateOrCreate(
+                ['ean' => $product['ean']],
+                $product
+            );
         }
     }
 }
