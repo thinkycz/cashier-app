@@ -49,7 +49,7 @@ const printBill = () => {
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
                     <h2 class="text-2xl font-semibold text-slate-900">Bill {{ bill.transaction_id }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">Detailed transaction breakdown, customer info, and totals.</p>
+                    <p class="mt-1 text-sm text-slate-600">Detailed transaction breakdown, customer info, and totals.</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <Link
@@ -77,7 +77,7 @@ const printBill = () => {
 
         <div class="py-6">
             <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
-                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="grid gap-4 px-6 py-5 md:grid-cols-3 md:items-center">
                         <div class="md:col-span-2">
                             <h1 class="text-xl font-semibold text-slate-900">Transaction {{ bill.transaction_id }}</h1>
@@ -103,7 +103,7 @@ const printBill = () => {
                 </section>
 
                 <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Transaction Details</h3>
                         </div>
@@ -130,7 +130,7 @@ const printBill = () => {
                         </dl>
                     </article>
 
-                    <article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Customer Details</h3>
                         </div>
@@ -151,7 +151,7 @@ const printBill = () => {
                     </article>
                 </section>
 
-                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Items</h3>
                     </div>
@@ -214,7 +214,7 @@ const printBill = () => {
                     </div>
                 </section>
 
-                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Summary</h3>
                     </div>
@@ -238,7 +238,7 @@ const printBill = () => {
                     </div>
                 </section>
 
-                <section v-if="bill.notes" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <section v-if="bill.notes" class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
                         <h3 class="text-base font-semibold text-slate-800">Notes</h3>
                     </div>

@@ -43,7 +43,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
                     <h2 class="text-2xl font-semibold text-slate-900">Products</h2>
-                    <p class="mt-1 text-sm text-slate-500">Manage your catalog, pricing, and availability in one place.</p>
+                    <p class="mt-1 text-sm text-slate-600">Manage your catalog, pricing, and availability in one place.</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <div class="relative w-full sm:w-80">
@@ -55,12 +55,12 @@ const isEmpty = computed(() => props.products.data.length === 0);
                             v-model="search"
                             type="text"
                             placeholder="Search by name, category, or EAN"
-                            class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 transition-all duration-200 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                            class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                         />
                     </div>
                     <Link
                         :href="route('products.create')"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-sky-700"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-teal-700"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -73,7 +73,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
 
         <div class="py-6">
             <div class="mx-auto max-w-7xl space-y-4 sm:px-6 lg:px-8">
-                <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div v-if="isEmpty" class="px-6 py-16 text-center">
                         <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5" />
@@ -85,7 +85,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
                         <Link
                             v-if="!isSearchActive"
                             :href="route('products.create')"
-                            class="mt-5 inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-sky-700"
+                            class="mt-5 inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-teal-700"
                         >
                             Create Product
                         </Link>
@@ -114,7 +114,11 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                             <p class="text-sm font-semibold text-slate-900">{{ product.name }}</p>
                                             <p v-if="product.short_name" class="mt-0.5 text-xs text-slate-500">{{ product.short_name }}</p>
                                         </td>
-                                        <td class="px-5 py-4 align-top text-xs font-mono text-slate-600">{{ product.ean || '-' }}</td>
+                                        <td class="px-5 py-4 align-top">
+                                            <span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
+                                                {{ product.ean || '-' }}
+                                            </span>
+                                        </td>
                                         <td class="px-5 py-4 align-top">
                                             <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{{ product.vat_rate }}%</span>
                                         </td>
@@ -174,7 +178,9 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                     <div>
                                         <h3 class="text-sm font-semibold text-slate-900">{{ product.name }}</h3>
                                         <p v-if="product.short_name" class="mt-1 text-xs text-slate-500">{{ product.short_name }}</p>
-                                        <p class="mt-1 text-xs text-slate-500">EAN: {{ product.ean || 'N/A' }}</p>
+                                        <span class="mt-1 inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
+                                            EAN: {{ product.ean || 'N/A' }}
+                                        </span>
                                     </div>
                                     <span
                                         :class="product.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
@@ -226,7 +232,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                 v-if="link.url"
                                 :href="link.url"
                                 :class="link.active
-                                    ? 'inline-flex min-w-9 items-center justify-center rounded-md border border-sky-600 bg-sky-600 px-3 py-2 text-xs font-medium text-white'
+                                    ? 'inline-flex min-w-9 items-center justify-center rounded-md border border-teal-600 bg-teal-600 px-3 py-2 text-xs font-medium text-white'
                                     : 'inline-flex min-w-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50'"
                                 v-html="link.label"
                             />

@@ -25,7 +25,14 @@ const submit = () => {
     <GuestLayout>
         <Head title="Forgot Password" />
 
-        <div class="mb-4 text-sm text-gray-600">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Reset your password</h1>
+            <p class="mt-1 text-sm text-slate-600">
+                Enter your email and we will send you a secure reset link.
+            </p>
+        </div>
+
+        <div class="mb-4 text-sm text-slate-600">
             Forgot your password? No problem. Just let us know your email
             address and we will email you a password reset link that will allow
             you to choose a new one.
@@ -33,7 +40,7 @@ const submit = () => {
 
         <div
             v-if="status"
-            class="mb-4 text-sm font-medium text-green-600"
+            class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"
         >
             {{ status }}
         </div>
@@ -45,7 +52,7 @@ const submit = () => {
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.email"
                     required
                     autofocus
@@ -57,6 +64,7 @@ const submit = () => {
 
             <div class="mt-4 flex items-center justify-end">
                 <PrimaryButton
+                    class="bg-teal-600 hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:ring-teal-500"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >

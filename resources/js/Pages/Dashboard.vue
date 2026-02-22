@@ -91,23 +91,11 @@ onMounted(() => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div class="min-w-0">
-                    <h2 class="text-2xl font-semibold text-slate-900">Dashboard</h2>
-                    <p class="mt-1 text-sm text-slate-500">Run checkout, manage open receipts, and quickly add products.</p>
-                </div>
-                <div class="text-sm text-slate-500 sm:text-right">
-                    {{ formatPrice(cart.total) }} in cart
-                </div>
-            </div>
-        </template>
-
-        <div class="py-6">
+        <div class="relative py-6">
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
-                <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                    <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 text-white">
-                        <p class="text-xs uppercase tracking-wide text-slate-200">Current Total</p>
+                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/60">
+                    <div class="bg-gradient-to-r from-teal-700 to-cyan-700 px-5 py-4 text-white">
+                        <p class="text-xs uppercase tracking-wide text-cyan-100">Current Total</p>
                         <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
                     </div>
 
@@ -115,21 +103,21 @@ onMounted(() => {
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
                             <div>
                                 <label class="mb-1.5 block text-xs font-medium text-slate-600">Packages</label>
-                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
+                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
                             </div>
                             <div>
                                 <label class="mb-1.5 block text-xs font-medium text-slate-600">Quantity</label>
-                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
+                                <input type="number" min="1" value="1" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
                             </div>
                         </div>
 
                         <div>
                             <label class="mb-1.5 block text-xs font-medium text-slate-600">Manual Price</label>
-                            <input type="number" min="0" step="0.01" class="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-700" />
+                            <input type="number" min="0" step="0.01" class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
                         </div>
 
-                        <div class="overflow-hidden rounded-md border border-slate-200">
-                            <div class="grid grid-cols-4 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        <div class="overflow-hidden rounded-md border border-slate-200/90">
+                            <div class="grid grid-cols-4 bg-slate-50/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                                 <span>#</span>
                                 <span>Qty</span>
                                 <span>Unit</span>
@@ -153,19 +141,19 @@ onMounted(() => {
                 </section>
 
                 <section class="space-y-4">
-                    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="rounded-xl border border-teal-100 bg-white/90 p-4 shadow-sm shadow-teal-100/50">
                         <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                             <div>
                                 <h3 class="text-xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h3>
                                 <p class="mt-1 text-sm text-slate-500">{{ cart.selectedCustomer?.name || 'No customer selected' }}</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Discount / Surcharge</button>
-                                <button type="button" class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Select Customer</button>
+                                <button type="button" class="inline-flex items-center rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100/70">Discount / Surcharge</button>
+                                <button type="button" class="inline-flex items-center rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100/70">Select Customer</button>
                                 <button
                                     type="button"
                                     :disabled="isCreatingReceipt"
-                                    class="inline-flex items-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    class="inline-flex items-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                                     @click="createNewTransaction"
                                 >
                                     {{ isCreatingReceipt ? 'Creating...' : 'New Receipt' }}
@@ -174,8 +162,8 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
+                        <div class="border-b border-slate-200/80 bg-slate-50/80 px-4 py-3">
                             <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Open Receipts</h4>
                         </div>
                         <div class="space-y-2 p-4">
@@ -184,7 +172,7 @@ onMounted(() => {
                                 :key="transaction.id"
                                 type="button"
                                 class="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors"
-                                :class="isActiveReceipt(transaction) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                                :class="isActiveReceipt(transaction) ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:bg-slate-50'"
                                 @click="selectTransaction(transaction)"
                             >
                                 <span>
@@ -197,8 +185,8 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
+                        <div class="border-b border-slate-200/80 bg-slate-50/80 px-4 py-3">
                             <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Find Product</h4>
                         </div>
 
@@ -212,7 +200,7 @@ onMounted(() => {
                                         v-model="searchQuery"
                                         type="text"
                                         placeholder="Search products"
-                                        class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                                        class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                                     />
                                 </div>
 
@@ -237,7 +225,7 @@ onMounted(() => {
 
                                 <Link
                                     :href="route('products.create')"
-                                    class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700"
+                                    class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700"
                                 >
                                     Create Product
                                 </Link>
@@ -277,7 +265,7 @@ onMounted(() => {
                                             <td class="px-4 py-3 text-right">
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100"
+                                                    class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
                                                     @click="addToCart(product)"
                                                 >
                                                     Add
@@ -316,7 +304,7 @@ onMounted(() => {
                                     </div>
                                     <button
                                         type="button"
-                                        class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700"
+                                        class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700"
                                         @click="addToCart(product)"
                                     >
                                         Add to Cart

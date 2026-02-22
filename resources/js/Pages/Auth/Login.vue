@@ -33,7 +33,12 @@ const submit = () => {
     <GuestLayout>
         <Head title="Log in" />
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+            <p class="mt-1 text-sm text-slate-600">Sign in to continue managing your store.</p>
+        </div>
+
+        <div v-if="status" class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
             {{ status }}
         </div>
 
@@ -44,7 +49,7 @@ const submit = () => {
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.email"
                     required
                     autofocus
@@ -60,7 +65,7 @@ const submit = () => {
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
@@ -71,8 +76,8 @@ const submit = () => {
 
             <div class="mt-4 block">
                 <label class="flex items-center">
-                    <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
+                    <Checkbox name="remember" v-model:checked="form.remember" class="text-teal-600 focus:ring-teal-500" />
+                    <span class="ms-2 text-sm text-slate-600"
                         >Remember me</span
                     >
                 </label>
@@ -82,13 +87,13 @@ const submit = () => {
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    class="rounded-md text-sm text-slate-600 underline decoration-teal-200 underline-offset-4 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 >
                     Forgot your password?
                 </Link>
 
                 <PrimaryButton
-                    class="ms-4"
+                    class="ms-4 bg-teal-600 hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:ring-teal-500"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >

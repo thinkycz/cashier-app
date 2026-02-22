@@ -24,6 +24,11 @@ const submit = () => {
     <GuestLayout>
         <Head title="Register" />
 
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Create your account</h1>
+            <p class="mt-1 text-sm text-slate-600">Start using Cashier in a few seconds.</p>
+        </div>
+
         <form @submit.prevent="submit">
             <div>
                 <InputLabel for="name" value="Name" />
@@ -31,7 +36,7 @@ const submit = () => {
                 <TextInput
                     id="name"
                     type="text"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.name"
                     required
                     autofocus
@@ -47,7 +52,7 @@ const submit = () => {
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.email"
                     required
                     autocomplete="username"
@@ -62,7 +67,7 @@ const submit = () => {
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.password"
                     required
                     autocomplete="new-password"
@@ -80,7 +85,7 @@ const submit = () => {
                 <TextInput
                     id="password_confirmation"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full border-slate-200 focus:border-teal-500 focus:ring-teal-500"
                     v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
@@ -95,13 +100,13 @@ const submit = () => {
             <div class="mt-4 flex items-center justify-end">
                 <Link
                     :href="route('login')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    class="rounded-md text-sm text-slate-600 underline decoration-teal-200 underline-offset-4 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 >
                     Already registered?
                 </Link>
 
                 <PrimaryButton
-                    class="ms-4"
+                    class="ms-4 bg-teal-600 hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:ring-teal-500"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
