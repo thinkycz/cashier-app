@@ -197,7 +197,7 @@ class CustomerPagesTest extends TestCase
         $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
     }
 
-    public function test_customer_validation_fails_for_missing_required_fields(): void
+    public function test_customer_can_be_saved_with_an_empty_payload(): void
     {
         $user = User::factory()->create();
 
@@ -206,33 +206,44 @@ class CustomerPagesTest extends TestCase
             ->post(route('customers.store'), []);
 
         $response
-            ->assertSessionHasErrors([
-                'company_name',
-                'company_id',
-                'street',
-                'city',
-                'zip',
-                'country_code',
-            ]);
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('customers.index'));
+
+        $this->assertDatabaseHas('customers', [
+            'company_name' => null,
+            'company_id' => null,
+            'street' => null,
+            'city' => null,
+            'zip' => null,
+            'country_code' => null,
+        ]);
     }
 
-    public function test_customer_validation_fails_for_duplicate_company_id(): void
+    public function test_customers_can_share_the_same_company_id(): void
     {
         $user = User::factory()->create();
         $this->createCustomer(['company_id' => '77777777']);
 
-        $response = $this
+        $firstResponse = $this
             ->actingAs($user)
             ->post(route('customers.store'), [
-                'company_name' => 'Duplicate Co',
+                'company_name' => 'First Co',
                 'company_id' => '77777777',
-                'street' => 'Line 1',
-                'city' => 'Ostrava',
-                'zip' => '70030',
-                'country_code' => 'CZ',
+            ]);
+        $firstResponse->assertSessionHasNoErrors();
+
+        $secondResponse = $this
+            ->actingAs($user)
+            ->post(route('customers.store'), [
+                'company_name' => 'Second Co',
+                'company_id' => '77777777',
             ]);
 
-        $response->assertSessionHasErrors(['company_id']);
+        $secondResponse
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('customers.index'));
+
+        $this->assertSame(3, Customer::where('company_id', '77777777')->count());
     }
 
     public function test_customer_validation_fails_for_invalid_country_code_and_email(): void
@@ -242,16 +253,59 @@ class CustomerPagesTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(route('customers.store'), [
-                'company_name' => 'Bad Data',
-                'company_id' => '99119911',
                 'email' => 'not-an-email',
-                'street' => 'Line 1',
-                'city' => 'Pilsen',
-                'zip' => '30100',
                 'country_code' => 'CZE',
             ]);
 
         $response->assertSessionHasErrors(['country_code', 'email']);
+    }
+
+    public function test_customer_fields_can_be_cleared_to_null_on_update(): void
+    {
+        $user = User::factory()->create();
+        $customer = $this->createCustomer([
+            'company_name' => 'To Be Cleared',
+            'company_id' => 'CLR-001',
+            'street' => 'Street 1',
+            'city' => 'Prague',
+            'zip' => '11000',
+            'country_code' => 'CZ',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->put(route('customers.update', $customer), [
+                'company_name' => '',
+                'company_id' => '',
+                'vat_id' => '',
+                'first_name' => '',
+                'last_name' => '',
+                'email' => '',
+                'phone_number' => '',
+                'street' => '',
+                'city' => '',
+                'zip' => '',
+                'country_code' => '',
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('customers.index'));
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'company_name' => null,
+            'company_id' => null,
+            'vat_id' => null,
+            'first_name' => null,
+            'last_name' => null,
+            'email' => null,
+            'phone_number' => null,
+            'street' => null,
+            'city' => null,
+            'zip' => null,
+            'country_code' => null,
+        ]);
     }
 
     private function createCustomer(array $overrides = []): Customer

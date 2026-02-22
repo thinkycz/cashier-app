@@ -10,9 +10,16 @@ import { Link, usePage } from '@inertiajs/vue3';
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 
+const displayName = computed(() => {
+    const firstName = page.props.auth?.user?.first_name ?? '';
+    const lastName = page.props.auth?.user?.last_name ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+    return fullName || page.props.auth?.user?.email || page.props.auth?.user?.company_id || 'User';
+});
+
 const userInitials = computed(() => {
-    const name = page.props.auth?.user?.name ?? '';
-    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const parts = displayName.value.split(/\s+/).filter(Boolean);
 
     if (parts.length === 0) {
         return '?';
@@ -79,8 +86,8 @@ const userInitials = computed(() => {
                                             <button
                                                 type="button"
                                                 class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-100 bg-white/80 text-sm font-semibold uppercase tracking-wide text-teal-700 shadow-sm transition duration-150 ease-in-out hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
-                                                :aria-label="`Open user menu for ${$page.props.auth.user.name}`"
-                                                :title="$page.props.auth.user.name"
+                                                :aria-label="`Open user menu for ${displayName}`"
+                                                :title="displayName"
                                             >
                                                 {{ userInitials }}
                                             </button>
@@ -191,7 +198,7 @@ const userInitials = computed(() => {
                             <div
                                 class="text-base font-medium text-slate-800"
                             >
-                                {{ $page.props.auth.user.name }}
+                                {{ displayName }}
                             </div>
                             <div class="text-sm font-medium text-slate-500">
                                 {{ $page.props.auth.user.email }}

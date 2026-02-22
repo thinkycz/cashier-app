@@ -51,8 +51,7 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $this->validatePayload($request);
-        $validated['country_code'] = strtoupper($validated['country_code']);
+        $validated = $this->normalizePayload($this->validatePayload($request));
 
         Customer::create($validated);
 
@@ -86,8 +85,7 @@ class CustomerController extends Controller
      */
     public function update(Request $request, Customer $customer)
     {
-        $validated = $this->validatePayload($request, $customer->id);
-        $validated['country_code'] = strtoupper($validated['country_code']);
+        $validated = $this->normalizePayload($this->validatePayload($request));
 
         $customer->update($validated);
 
@@ -106,20 +104,52 @@ class CustomerController extends Controller
             ->with('success', 'Customer was successfully deleted.');
     }
 
-    private function validatePayload(Request $request, ?int $customerId = null): array
+    private function validatePayload(Request $request): array
     {
-        return $request->validate([
-            'company_name' => ['required', 'string', 'max:255'],
-            'company_id' => ['required', 'string', 'max:255', 'unique:customers,company_id,' . ($customerId ?? 'NULL')],
+        $input = $request->all();
+
+        foreach ([
+            'company_name',
+            'company_id',
+            'vat_id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone_number',
+            'street',
+            'city',
+            'zip',
+            'country_code',
+        ] as $field) {
+            if (! array_key_exists($field, $input) || ! is_string($input[$field])) {
+                continue;
+            }
+
+            $trimmed = trim($input[$field]);
+            $input[$field] = $trimmed === '' ? null : $trimmed;
+        }
+
+        return validator($input, [
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'company_id' => ['nullable', 'string', 'max:255'],
             'vat_id' => ['nullable', 'string', 'max:255'],
             'first_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:255'],
-            'street' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string', 'max:255'],
-            'zip' => ['required', 'string', 'max:50'],
-            'country_code' => ['required', 'string', 'size:2'],
-        ]);
+            'street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'zip' => ['nullable', 'string', 'max:50'],
+            'country_code' => ['nullable', 'string', 'size:2'],
+        ])->validate();
+    }
+
+    private function normalizePayload(array $validated): array
+    {
+        if (isset($validated['country_code']) && is_string($validated['country_code'])) {
+            $validated['country_code'] = strtoupper($validated['country_code']);
+        }
+
+        return $validated;
     }
 }

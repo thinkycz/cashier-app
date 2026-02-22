@@ -43,6 +43,14 @@ class Customer extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        return $this->full_name !== '' ? $this->full_name : $this->company_name;
+        if ($this->full_name !== '') {
+            return $this->full_name;
+        }
+
+        if (is_string($this->company_name) && $this->company_name !== '') {
+            return $this->company_name;
+        }
+
+        return 'Unknown customer';
     }
 }

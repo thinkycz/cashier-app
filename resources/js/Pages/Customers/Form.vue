@@ -98,7 +98,7 @@ const submit = () => {
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                             <div>
-                                <InputLabel for="company_name" value="Company Name *" />
+                                <InputLabel for="company_name" value="Company Name" />
                                 <TextInput
                                     id="company_name"
                                     v-model="form.company_name"
@@ -106,13 +106,12 @@ const submit = () => {
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.company_name }"
                                     placeholder="Enter company name"
-                                    required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.company_name" />
                             </div>
 
                             <div>
-                                <InputLabel for="company_id" value="Company ID *" />
+                                <InputLabel for="company_id" value="Company ID" />
                                 <TextInput
                                     id="company_id"
                                     v-model="form.company_id"
@@ -120,7 +119,6 @@ const submit = () => {
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.company_id }"
                                     placeholder="Company registration ID"
-                                    required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.company_id" />
                             </div>
@@ -139,7 +137,7 @@ const submit = () => {
                             </div>
 
                             <div>
-                                <InputLabel for="country_code" value="Country Code *" />
+                                <InputLabel for="country_code" value="Country Code" />
                                 <TextInput
                                     id="country_code"
                                     v-model="form.country_code"
@@ -148,7 +146,6 @@ const submit = () => {
                                     class="mt-1 block uppercase"
                                     :class="{ 'border-red-500': form.errors.country_code }"
                                     placeholder="CZ"
-                                    required
                                     @blur="normalizeCountryCode"
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.country_code" />
@@ -214,7 +211,7 @@ const submit = () => {
                             </div>
 
                             <div class="md:col-span-2">
-                                <InputLabel for="street" value="Street *" />
+                                <InputLabel for="street" value="Street" />
                                 <TextInput
                                     id="street"
                                     v-model="form.street"
@@ -222,13 +219,12 @@ const submit = () => {
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.street }"
                                     placeholder="Street and number"
-                                    required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.street" />
                             </div>
 
                             <div>
-                                <InputLabel for="city" value="City *" />
+                                <InputLabel for="city" value="City" />
                                 <TextInput
                                     id="city"
                                     v-model="form.city"
@@ -236,13 +232,12 @@ const submit = () => {
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.city }"
                                     placeholder="City"
-                                    required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.city" />
                             </div>
 
                             <div>
-                                <InputLabel for="zip" value="ZIP *" />
+                                <InputLabel for="zip" value="ZIP" />
                                 <TextInput
                                     id="zip"
                                     v-model="form.zip"
@@ -250,7 +245,6 @@ const submit = () => {
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.zip }"
                                     placeholder="ZIP code"
-                                    required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.zip" />
                             </div>

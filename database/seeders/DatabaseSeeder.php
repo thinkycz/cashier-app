@@ -19,7 +19,9 @@ class DatabaseSeeder extends Seeder
         User::firstOrCreate([
             'email' => 'testovaci@admin.cz',
         ], [
-            'name' => 'Testovaci Admin',
+            'first_name' => 'Testovaci',
+            'last_name' => 'Admin',
+            'company_id' => 'ADMIN-001',
             'password' => Hash::make('password'),
         ]);
 

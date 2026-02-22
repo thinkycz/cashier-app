@@ -16,9 +16,16 @@ defineProps({
 });
 
 const page = usePage();
+const displayName = computed(() => {
+    const firstName = page.props.auth?.user?.first_name ?? '';
+    const lastName = page.props.auth?.user?.last_name ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+    return fullName || page.props.auth?.user?.email || page.props.auth?.user?.company_id || 'User';
+});
+
 const userInitial = computed(() => {
-    const name = page.props.auth?.user?.name ?? '';
-    return name.trim().charAt(0).toUpperCase() || '?';
+    return displayName.value.trim().charAt(0).toUpperCase() || '?';
 });
 </script>
 
@@ -48,7 +55,7 @@ const userInitial = computed(() => {
                         </div>
                         <div
                             class="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/35 bg-white/20 text-xl font-semibold"
-                            :title="$page.props.auth.user.name"
+                            :title="displayName"
                         >
                             {{ userInitial }}
                         </div>

@@ -8,6 +8,22 @@ use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'company_name' => $this->normalizeNullableString('company_name'),
+            'company_id' => $this->normalizeNullableString('company_id'),
+            'vat_id' => $this->normalizeNullableString('vat_id'),
+            'first_name' => $this->normalizeNullableString('first_name'),
+            'last_name' => $this->normalizeNullableString('last_name'),
+            'phone_number' => $this->normalizeNullableString('phone_number'),
+            'street' => $this->normalizeNullableString('street'),
+            'city' => $this->normalizeNullableString('city'),
+            'zip' => $this->normalizeNullableString('zip'),
+            'country_code' => $this->normalizeNullableString('country_code'),
+        ]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -16,7 +32,16 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'company_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique(User::class, 'company_id')->ignore($this->user()->id),
+            ],
+            'vat_id' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -25,6 +50,24 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'phone_number' => ['nullable', 'string', 'max:255'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'zip' => ['nullable', 'string', 'max:255'],
+            'country_code' => ['nullable', 'string', 'size:2'],
         ];
+    }
+
+    private function normalizeNullableString(string $key): ?string
+    {
+        $value = $this->input($key);
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

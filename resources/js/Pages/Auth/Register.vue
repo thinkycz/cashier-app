@@ -7,7 +7,9 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
-    name: '',
+    first_name: '',
+    last_name: '',
+    company_id: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -30,20 +32,52 @@ const submit = () => {
         </div>
 
         <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="name" value="Name" />
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <InputLabel for="first_name" value="First Name" />
+
+                    <TextInput
+                        id="first_name"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.first_name"
+                        required
+                        autofocus
+                        autocomplete="given-name"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.first_name" />
+                </div>
+
+                <div>
+                    <InputLabel for="last_name" value="Last Name" />
+
+                    <TextInput
+                        id="last_name"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.last_name"
+                        required
+                        autocomplete="family-name"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.last_name" />
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="company_id" value="Company ID" />
 
                 <TextInput
-                    id="name"
+                    id="company_id"
                     type="text"
                     class="mt-1 block"
-                    v-model="form.name"
+                    v-model="form.company_id"
                     required
-                    autofocus
-                    autocomplete="name"
+                    autocomplete="organization"
                 />
 
-                <InputError class="mt-2" :message="form.errors.name" />
+                <InputError class="mt-2" :message="form.errors.company_id" />
             </div>
 
             <div class="mt-4">
