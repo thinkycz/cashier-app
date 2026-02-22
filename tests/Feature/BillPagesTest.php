@@ -133,7 +133,14 @@ class BillPagesTest extends TestCase
 
     public function test_bills_preview_uses_bill_template_for_cash_and_card_statuses(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'company_name' => 'Test Supplier s.r.o.',
+            'company_id' => '12345678',
+            'vat_id' => 'CZ12345678',
+            'street' => 'Main 123',
+            'city' => 'Praha',
+            'zip' => '11000',
+        ]);
         $transaction = $this->createTransaction($user, ['status' => 'cash']);
         $product = $this->createProduct($user);
         $this->createTransactionItem($transaction, $product);
@@ -143,7 +150,10 @@ class BillPagesTest extends TestCase
         $response
             ->assertOk()
             ->assertViewIs('bills.bill')
-            ->assertSee('Účtenka č.', false);
+            ->assertSee('Účtenka č.', false)
+            ->assertSee('Test Supplier s.r.o.', false)
+            ->assertSee('IČ: 12345678', false)
+            ->assertSee('DIČ: CZ12345678', false);
     }
 
     public function test_bills_preview_uses_quotation_template_for_order_status(): void

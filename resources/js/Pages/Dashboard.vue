@@ -9,6 +9,7 @@ import {
     completeLocalReceipt,
     createLocalReceipt,
     deleteLocalReceipt,
+    getLocalReceipt,
     isOfflineReceiptsEnabled,
     listOpenLocalReceipts,
     listUnsyncedCompletedReceipts,
@@ -73,9 +74,13 @@ const checkoutInfoMessage = ref('');
 const cashPaidInputRef = ref(null);
 const checkoutConfirmButtonRef = ref(null);
 const showBillPreviewModal = ref(false);
+const billPreviewMode = ref(null);
 const billPreviewUrl = ref('');
 const embeddedBillPreviewUrl = ref('');
 const billPreviewFrameRef = ref(null);
+const offlinePreviewReceipt = ref(null);
+const offlinePreviewSyncHint = ref('');
+const activePreviewReceiptId = ref(null);
 
 const openReceipts = computed(() => {
     const filteredServerReceipts = serverOpenReceipts.value.filter((receipt) => {
@@ -769,11 +774,13 @@ const createCompletedLocalReceiptFromServerTransaction = async (serverTransactio
         status: 'open',
     });
 
-    await completeLocalReceipt(temporaryLocalTransaction.id, completedLocalReceipt);
+    const completed = await completeLocalReceipt(temporaryLocalTransaction.id, completedLocalReceipt);
     hiddenServerReceiptIds.value = [
         ...hiddenServerReceiptIds.value.filter((id) => id !== serverTransaction?.id),
         serverTransaction?.id,
     ].filter(Boolean);
+
+    return completed;
 };
 
 const refreshLocalReceiptViews = async () => {
@@ -785,6 +792,39 @@ const refreshLocalReceiptViews = async () => {
 
     localOpenReceipts.value = await listOpenLocalReceipts();
     syncQueueReceipts.value = await listUnsyncedCompletedReceipts();
+
+    if (showBillPreviewModal.value && billPreviewMode.value === 'offline' && activePreviewReceiptId.value) {
+        const latestReceipt = await getLocalReceipt(activePreviewReceiptId.value);
+        if (!latestReceipt) {
+            return;
+        }
+
+        const normalized = normalizeOfflinePreviewReceipt(latestReceipt);
+        offlinePreviewReceipt.value = normalized;
+
+        if (canOpenServerPreviewFromOffline(normalized)) {
+            openServerBillPreview(normalized.server_transaction_id);
+            offlinePreviewSyncHint.value = 'Synced, switched to server preview.';
+        }
+    }
+};
+
+const openOfflinePreviewById = async (receiptId) => {
+    if (!receiptId) {
+        return;
+    }
+
+    const receipt = await getLocalReceipt(receiptId);
+    if (!receipt) {
+        return;
+    }
+
+    if (receipt.server_transaction_id) {
+        openServerBillPreview(receipt.server_transaction_id);
+        return;
+    }
+
+    openOfflineBillPreview(receipt);
 };
 
 const persistActiveLocalReceipt = async () => {
@@ -853,20 +893,363 @@ const closeCheckoutModal = () => {
 
 const closeBillPreviewModal = () => {
     showBillPreviewModal.value = false;
+    billPreviewMode.value = null;
+    billPreviewUrl.value = '';
+    embeddedBillPreviewUrl.value = '';
+    offlinePreviewReceipt.value = null;
+    offlinePreviewSyncHint.value = '';
+    activePreviewReceiptId.value = null;
 };
 
-const openBillPreviewModal = (transactionId) => {
+const formatPreviewDate = (value) => {
+    if (!value) {
+        return '-';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return '-';
+    }
+
+    return parsed.toLocaleDateString('cs-CZ', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+const formatPreviewVatLabel = (value) => {
+    return `${Number(value || 0).toFixed(2).replace('.', ',')} %`;
+};
+
+const sortVatRateLabels = (labels) => {
+    return labels.sort((left, right) => {
+        return parseFloat(String(left).replace(',', '.')) - parseFloat(String(right).replace(',', '.'));
+    });
+};
+
+const buildVatSummary = (items = []) => {
+    const summary = {};
+
+    for (const item of items) {
+        const vatRate = Number(item?.vat_rate || 0);
+        const vatLabel = formatPreviewVatLabel(vatRate);
+        const totalInclVat = Number(item?.total || 0);
+        const divider = 1 + (vatRate / 100);
+        const base = divider > 0 ? (totalInclVat / divider) : totalInclVat;
+        const vat = totalInclVat - base;
+
+        if (!summary[vatLabel]) {
+            summary[vatLabel] = {
+                base: 0,
+                vat: 0,
+                total: 0,
+            };
+        }
+
+        summary[vatLabel].base += base;
+        summary[vatLabel].vat += vat;
+        summary[vatLabel].total += totalInclVat;
+    }
+
+    return summary;
+};
+
+const normalizeOfflinePreviewReceipt = (receipt) => {
+    if (!receipt) {
+        return null;
+    }
+
+    const items = Array.isArray(receipt.items) ? receipt.items : [];
+    const vatSummary = buildVatSummary(items);
+    const vatRates = sortVatRateLabels(Object.keys(vatSummary));
+    const checkoutMethod = receipt.checkout_method || receipt.status || 'cash';
+
+    return {
+        id: receipt.id,
+        number: receipt.transaction_id || receipt.id,
+        created_at: receipt.completed_at || receipt.updated_at || receipt.created_at,
+        checkout_method: checkoutMethod,
+        is_order: checkoutMethod === 'order',
+        total: Number(receipt.total || 0),
+        items: items.map((item, index) => ({
+            id: item.line_id || `${receipt.id}-line-${index + 1}`,
+            order_column: index + 1,
+            name: item.product?.name || item.product_name || 'Polozka',
+            short_name: item.product?.short_name || '',
+            packages: Number(item.packages || 1),
+            quantity: Number(item.quantity || 0),
+            unit_price: Number(item.unit_price || 0),
+            total: Number(item.total || 0),
+            vat_rate: Number(item.vat_rate || 0),
+        })),
+        vat_rates: vatRates,
+        vat_summary: vatSummary,
+        server_transaction_id: receipt.server_transaction_id || null,
+    };
+};
+
+const canOpenServerPreviewFromOffline = (receipt) => {
+    return Boolean(receipt?.server_transaction_id);
+};
+
+const openServerBillPreview = (transactionId) => {
     if (!transactionId) {
         return;
     }
 
     const previewUrl = route('bills.preview', transactionId);
+    billPreviewMode.value = 'server';
     billPreviewUrl.value = previewUrl;
     embeddedBillPreviewUrl.value = `${previewUrl}?embedded=1`;
+    offlinePreviewReceipt.value = null;
+    offlinePreviewSyncHint.value = '';
+    activePreviewReceiptId.value = null;
     showBillPreviewModal.value = true;
 };
 
-const printBillFromPreviewFrame = () => {
+const openOfflineBillPreview = (receipt) => {
+    const normalized = normalizeOfflinePreviewReceipt(receipt);
+    if (!normalized) {
+        return;
+    }
+
+    billPreviewMode.value = 'offline';
+    billPreviewUrl.value = '';
+    embeddedBillPreviewUrl.value = '';
+    offlinePreviewReceipt.value = normalized;
+    activePreviewReceiptId.value = normalized.id;
+    offlinePreviewSyncHint.value = canOpenServerPreviewFromOffline(normalized)
+        ? 'Receipt synced. Switching to server preview...'
+        : '';
+    showBillPreviewModal.value = true;
+};
+
+const escapeHtml = (value) => {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+};
+
+const buildOfflinePrintBody = (receipt) => {
+    if (!receipt) {
+        return '<div></div>';
+    }
+
+    const renderOrderRows = () => {
+        const itemRows = receipt.items.map((item) => {
+            const shortName = item.short_name ? ` - ${escapeHtml(item.short_name)}` : '';
+
+            return `
+            <tr style="border-top:1px solid rgb(241 245 249);">
+                <td colspan="2" style="padding:.375rem .25rem .125rem .25rem;text-align:left;font-weight:600;color:rgb(15 23 42);">
+                    ${item.order_column} - ${escapeHtml(item.name)}${shortName}
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:0 .25rem .375rem .25rem;color:rgb(51 65 85);">
+                    ${item.packages} x ${item.quantity} x ${formatPrice(item.unit_price)}
+                </td>
+                <td style="padding:0 .25rem .375rem .25rem;text-align:right;font-weight:500;color:rgb(15 23 42);">
+                    = ${formatPrice(item.total)}
+                </td>
+            </tr>`;
+        }).join('');
+
+        return `
+        <thead style="border-bottom:1px solid rgb(15 118 110);">
+            <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
+                <td colspan="100%" style="padding:.375rem 0;text-align:center;font-weight:600;color:rgb(19 78 74);">Objednavka</td>
+            </tr>
+            <tr style="background:rgb(248 250 252);">
+                <td style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Polozka</td>
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem</td>
+            </tr>
+        </thead>
+        <tbody>
+            ${itemRows}
+            <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
+                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">Celkem k uhrade</td>
+                <td style="padding:.375rem .25rem;text-align:right;font-size:1rem;font-weight:600;color:rgb(19 78 74);">${formatPrice(receipt.total)}</td>
+            </tr>
+        </tbody>`;
+    };
+
+    const renderBillRows = () => {
+        const itemRows = receipt.items.map((item) => {
+            return `
+            <tr style="border-top:1px solid rgb(241 245 249);">
+                <td colspan="4" style="padding:.375rem .25rem .125rem .25rem;text-align:left;font-weight:600;color:rgb(15 23 42);">
+                    ${item.order_column} - ${escapeHtml(item.name)}
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:0 .25rem .375rem .25rem;color:rgb(51 65 85);">
+                    ${item.packages} x ${item.quantity} x ${formatPrice(item.unit_price)}
+                </td>
+                <td></td>
+                <td style="padding:0 .25rem .375rem .25rem;text-align:right;color:rgb(71 85 105);">${formatPreviewVatLabel(item.vat_rate)}</td>
+                <td style="padding:0 .25rem .375rem .25rem;text-align:right;font-weight:500;color:rgb(15 23 42);">${formatPrice(item.total)}</td>
+            </tr>`;
+        }).join('');
+
+        const vatRows = receipt.vat_rates.map((vatLabel) => {
+            const vatData = receipt.vat_summary[vatLabel] || { base: 0, vat: 0, total: 0 };
+            return `
+            <tr>
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">Zaklad DPH ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPrice(vatData.base)}</td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">DPH ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPrice(vatData.vat)}</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgb(241 245 249);">
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">Celkem ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;text-align:right;font-weight:500;color:rgb(30 41 59);">${formatPrice(vatData.total)}</td>
+            </tr>`;
+        }).join('');
+
+        return `
+        <thead style="border-bottom:1px solid rgb(15 118 110);">
+            <tr style="border-bottom:1px solid rgb(153 246 228);background:rgb(240 253 250 / .7);">
+                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;color:rgb(19 78 74);">Uctenka c.</td>
+                <td colspan="2" style="padding:.375rem .25rem;text-align:right;font-weight:600;color:rgb(19 78 74);">${escapeHtml(receipt.number)}</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgb(204 251 241);">
+                <td colspan="2" style="padding:.375rem .25rem;color:rgb(71 85 105);">Datum a cas</td>
+                <td colspan="2" style="padding:.375rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPreviewDate(receipt.created_at)}</td>
+            </tr>
+            <tr style="background:rgb(248 250 252);">
+                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Polozka</td>
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">DPH</td>
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem s DPH</td>
+            </tr>
+        </thead>
+        <tbody>
+            ${itemRows}
+            <tr style="border-top:2px solid rgb(15 118 110);">
+                <td colspan="100%" style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(17 94 89);">DPH rekapitulace</td>
+            </tr>
+            ${vatRows}
+            <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
+                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">Celkem k uhrade</td>
+                <td colspan="3" style="padding:.375rem .25rem;text-align:right;font-size:1rem;font-weight:600;color:rgb(19 78 74);">${formatPrice(receipt.total)}</td>
+            </tr>
+        </tbody>`;
+    };
+
+    return `
+    <div style="font-size:11px;line-height:1.25;color:rgb(30 41 59);">
+      <table style="width:100%;border-collapse:collapse;">
+        ${receipt.is_order ? renderOrderRows() : renderBillRows()}
+      </table>
+    </div>`;
+};
+
+const buildOfflinePrintDocument = (contentHtml, title) => {
+    return `<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    :root {
+      --preview-card-bg: #ffffff;
+      --preview-text: #0f172a;
+      --preview-card-border: #cdd8e5;
+    }
+
+    @page { size: auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--preview-text);
+      background: #ffffff;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .preview-shell { padding: 0; }
+    .document {
+      width: 80mm;
+      margin: 0;
+      border: 0;
+      box-shadow: none;
+      border-radius: 0;
+      background-color: var(--preview-card-bg);
+      padding: .35rem;
+    }
+
+  </style>
+</head>
+<body>
+<div class="preview-shell">
+  <div class="document">
+    ${contentHtml}
+  </div>
+</div>
+</body>
+</html>`;
+};
+
+const printOfflineDraft = () => {
+    if (!offlinePreviewReceipt.value) {
+        return;
+    }
+
+    const billTitle = offlinePreviewReceipt.value?.number
+        ? `Bill ${offlinePreviewReceipt.value.number}`
+        : 'Offline bill preview';
+    const contentHtml = buildOfflinePrintBody(offlinePreviewReceipt.value);
+    const html = buildOfflinePrintDocument(contentHtml, billTitle);
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(printFrame);
+
+    const frameDocument = printFrame.contentWindow?.document;
+    if (!frameDocument || !printFrame.contentWindow) {
+        printFrame.remove();
+        window.print();
+        return;
+    }
+
+    frameDocument.open();
+    frameDocument.write(html);
+    frameDocument.close();
+
+    window.setTimeout(() => {
+        const frameWindow = printFrame.contentWindow;
+        if (!frameWindow) {
+            printFrame.remove();
+            return;
+        }
+
+        frameWindow.focus();
+        frameWindow.print();
+        window.setTimeout(() => {
+            printFrame.remove();
+        }, 300);
+    }, 100);
+};
+
+const printBillPreview = () => {
+    if (billPreviewMode.value === 'offline') {
+        printOfflineDraft();
+        return;
+    }
+
     const frameWindow = billPreviewFrameRef.value?.contentWindow;
 
     if (frameWindow) {
@@ -876,7 +1259,13 @@ const printBillFromPreviewFrame = () => {
 };
 
 const openPreviewInNewWindow = () => {
-    if (!billPreviewUrl.value) {
+    if (billPreviewMode.value === 'offline' && canOpenServerPreviewFromOffline(offlinePreviewReceipt.value)) {
+        const previewUrl = route('bills.preview', offlinePreviewReceipt.value.server_transaction_id);
+        window.open(previewUrl, '_blank', 'noopener');
+        return;
+    }
+
+    if (billPreviewMode.value !== 'server' || !billPreviewUrl.value) {
         return;
     }
 
@@ -908,18 +1297,18 @@ const openCheckoutModal = async (checkoutMethod) => {
 const performCheckout = async (checkoutMethod) => {
     if (!canCheckout.value) {
         return {
-            previewable: false,
+            previewMode: null,
             transactionId: null,
-            offlineCompleted: false,
+            offlineReceiptId: null,
         };
     }
 
     const activeTransaction = cart.currentTransaction;
     if (!activeTransaction?.id) {
         return {
-            previewable: false,
+            previewMode: null,
             transactionId: null,
-            offlineCompleted: false,
+            offlineReceiptId: null,
         };
     }
 
@@ -927,7 +1316,7 @@ const performCheckout = async (checkoutMethod) => {
 
     try {
         if (isLocalTransaction(activeTransaction)) {
-            await completeLocalReceipt(activeTransaction.id, buildLocalReceiptSnapshot(activeTransaction, {
+            const completed = await completeLocalReceipt(activeTransaction.id, buildLocalReceiptSnapshot(activeTransaction, {
                 checkout_method: checkoutMethod,
                 state: 'completed',
                 sync_status: 'pending',
@@ -949,9 +1338,9 @@ const performCheckout = async (checkoutMethod) => {
             }
 
             return {
-                previewable: false,
+                previewMode: 'offline',
                 transactionId: null,
-                offlineCompleted: true,
+                offlineReceiptId: completed?.id || activeTransaction.id,
             };
         }
 
@@ -976,9 +1365,9 @@ const performCheckout = async (checkoutMethod) => {
         syncOpenReceiptsFromResponse(data);
 
         return {
-            previewable: Boolean(data?.transaction?.id),
+            previewMode: Boolean(data?.transaction?.id) ? 'server' : null,
             transactionId: Number(data?.transaction?.id) || null,
-            offlineCompleted: false,
+            offlineReceiptId: null,
         };
     } catch (error) {
         const canFallbackToOffline = offlineEnabled && (!isOnline.value || !error?.response);
@@ -987,7 +1376,7 @@ const performCheckout = async (checkoutMethod) => {
             throw error;
         }
 
-        await createCompletedLocalReceiptFromServerTransaction(activeTransaction, checkoutMethod);
+        const completed = await createCompletedLocalReceiptFromServerTransaction(activeTransaction, checkoutMethod);
         cart.clearTransactionItems(activeTransaction);
         await refreshLocalReceiptViews();
 
@@ -1002,9 +1391,9 @@ const performCheckout = async (checkoutMethod) => {
         }
 
         return {
-            previewable: false,
+            previewMode: 'offline',
             transactionId: null,
-            offlineCompleted: true,
+            offlineReceiptId: completed?.id || null,
         };
     } finally {
         isCheckingOut.value = false;
@@ -1033,15 +1422,16 @@ const submitCheckout = async () => {
     try {
         const checkoutResult = await performCheckout(checkoutMethod);
         closeCheckoutModal();
+        await nextTick();
 
-        if (checkoutResult?.previewable && checkoutResult?.transactionId) {
-            await nextTick();
-            openBillPreviewModal(checkoutResult.transactionId);
+        if (checkoutResult?.previewMode === 'server' && checkoutResult?.transactionId) {
+            openServerBillPreview(checkoutResult.transactionId);
             return;
         }
 
-        if (checkoutResult?.offlineCompleted) {
-            checkoutInfoMessage.value = 'Receipt was completed locally. Bill preview will be available after sync.';
+        if (checkoutResult?.previewMode === 'offline' && checkoutResult?.offlineReceiptId) {
+            await openOfflinePreviewById(checkoutResult.offlineReceiptId);
+            checkoutInfoMessage.value = 'Receipt completed offline and opened as draft preview.';
         }
     } catch {
         checkoutModalError.value = 'Unable to checkout. Please try again.';
@@ -1149,6 +1539,14 @@ const retryFailedSync = async (receiptId) => {
     if (isOnline.value) {
         await runSync();
     }
+};
+
+const previewQueuedReceipt = async (receipt) => {
+    if (!receipt?.id) {
+        return;
+    }
+
+    await openOfflinePreviewById(receipt.id);
 };
 
 const connectionChanged = () => {
@@ -1585,14 +1983,23 @@ onBeforeUnmount(() => {
                                     <p class="mt-0.5 text-xs text-slate-500">{{ receiptSyncLabel(receipt) }}</p>
                                     <p v-if="receipt.sync_error" class="mt-0.5 text-xs text-rose-600">{{ receipt.sync_error }}</p>
                                 </div>
-                                <button
-                                    v-if="receipt.sync_status === 'failed'"
-                                    type="button"
-                                    class="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-200"
-                                    @click="retryFailedSync(receipt.id)"
-                                >
-                                    Retry
-                                </button>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                        @click="previewQueuedReceipt(receipt)"
+                                    >
+                                        Preview
+                                    </button>
+                                    <button
+                                        v-if="receipt.sync_status === 'failed'"
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-200"
+                                        @click="retryFailedSync(receipt.id)"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
                             </article>
                         </div>
                     </div>
@@ -1793,12 +2200,20 @@ onBeforeUnmount(() => {
         <Modal :show="showBillPreviewModal" max-width="2xl" @close="closeBillPreviewModal">
             <div class="p-5">
                 <div class="flex items-start justify-between gap-4">
-                    <h3 class="text-lg font-semibold text-slate-900">Nahled uctenky</h3>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Nahled uctenky</h3>
+                        <p v-if="billPreviewMode === 'offline'" class="mt-1 text-xs font-medium text-amber-700">
+                            Offline draft
+                        </p>
+                        <p v-if="offlinePreviewSyncHint" class="mt-1 text-xs text-slate-500">
+                            {{ offlinePreviewSyncHint }}
+                        </p>
+                    </div>
                     <div class="flex items-center gap-2">
                         <button
                             type="button"
                             class="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:from-teal-700 hover:to-cyan-700"
-                            @click="printBillFromPreviewFrame"
+                            @click="printBillPreview"
                         >
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
@@ -1807,7 +2222,8 @@ onBeforeUnmount(() => {
                         </button>
                         <button
                             type="button"
-                            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                            :disabled="billPreviewMode === 'offline' && !canOpenServerPreviewFromOffline(offlinePreviewReceipt)"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                             @click="openPreviewInNewWindow"
                         >
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1828,13 +2244,98 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="dashboard-preview-canvas">
+                <div v-if="billPreviewMode === 'server'" class="dashboard-preview-canvas">
                     <iframe
                         ref="billPreviewFrameRef"
                         :src="embeddedBillPreviewUrl"
                         title="Nahled uctenky"
                         class="dashboard-preview-frame"
                     />
+                </div>
+
+                <div v-else-if="billPreviewMode === 'offline' && offlinePreviewReceipt" class="dashboard-offline-preview-wrapper">
+                    <div class="dashboard-offline-preview text-[11px] leading-tight text-slate-800" id="offline-bill-preview">
+                        <table class="w-full">
+                            <thead v-if="offlinePreviewReceipt.is_order" class="border-b border-teal-700">
+                                <tr class="border-y-2 border-teal-700 bg-teal-50/70">
+                                    <td class="py-1.5 text-center font-semibold text-teal-900" colspan="100%">Objednavka</td>
+                                </tr>
+                                <tr class="bg-slate-50">
+                                    <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700">Polozka</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">Celkem</td>
+                                </tr>
+                            </thead>
+
+                            <thead v-else class="border-b border-teal-700">
+                                <tr class="border-b border-teal-200 bg-teal-50/70">
+                                    <td class="px-1 py-1.5 font-semibold text-teal-900" colspan="2">Uctenka c.</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold text-teal-900" colspan="2">{{ offlinePreviewReceipt.number }}</td>
+                                </tr>
+                                <tr class="border-b border-teal-100">
+                                    <td class="px-1 py-1.5 text-slate-600" colspan="2">Datum a cas</td>
+                                    <td class="px-1 py-1.5 text-right text-slate-700" colspan="2">{{ formatPreviewDate(offlinePreviewReceipt.created_at) }}</td>
+                                </tr>
+                                <tr class="bg-slate-50">
+                                    <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700" colspan="2">Polozka</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">DPH</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">Celkem s DPH</td>
+                                </tr>
+                            </thead>
+
+                            <tbody v-if="offlinePreviewReceipt.is_order">
+                                <template v-for="item in offlinePreviewReceipt.items" :key="item.id">
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-1 pb-0.5 pt-1.5 text-left font-semibold text-slate-900" colspan="100%">
+                                            {{ item.order_column }} - {{ item.name }}{{ item.short_name ? ` - ${item.short_name}` : '' }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-1 pb-1.5 text-slate-700">{{ item.packages }} x {{ item.quantity }} x {{ formatPrice(item.unit_price) }}</td>
+                                        <td class="px-1 pb-1.5 text-right font-medium text-slate-900">= {{ formatPrice(item.total) }}</td>
+                                    </tr>
+                                </template>
+                                <tr class="border-y-2 border-teal-700 bg-teal-50/70">
+                                    <td class="px-1 py-1.5 text-left font-semibold text-teal-900">Celkem k uhrade</td>
+                                    <td class="px-1 py-1.5 text-right text-base font-semibold text-teal-900">{{ formatPrice(offlinePreviewReceipt.total) }}</td>
+                                </tr>
+                            </tbody>
+
+                            <tbody v-else>
+                                <template v-for="item in offlinePreviewReceipt.items" :key="item.id">
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-1 pb-0.5 pt-1.5 text-left font-semibold text-slate-900" colspan="4">{{ item.order_column }} - {{ item.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-1 pb-1.5 text-slate-700">{{ item.packages }} x {{ item.quantity }} x {{ formatPrice(item.unit_price) }}</td>
+                                        <td></td>
+                                        <td class="px-1 pb-1.5 text-right text-slate-600">{{ formatPreviewVatLabel(item.vat_rate) }}</td>
+                                        <td class="px-1 pb-1.5 text-right font-medium text-slate-900">{{ formatPrice(item.total) }}</td>
+                                    </tr>
+                                </template>
+                                <tr class="border-t-2 border-teal-700">
+                                    <td class="px-1 py-1.5 text-left font-semibold text-teal-800" colspan="100%">DPH rekapitulace</td>
+                                </tr>
+                                <template v-for="vatLabel in offlinePreviewReceipt.vat_rates" :key="vatLabel">
+                                    <tr>
+                                        <td class="px-1 py-1 text-slate-700" colspan="2">Zaklad DPH {{ vatLabel }}</td>
+                                        <td class="px-1 py-1 text-right text-slate-700" colspan="2">{{ formatPrice(offlinePreviewReceipt.vat_summary[vatLabel]?.base || 0) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-1 py-1 text-slate-700" colspan="2">DPH {{ vatLabel }}</td>
+                                        <td class="px-1 py-1 text-right text-slate-700" colspan="2">{{ formatPrice(offlinePreviewReceipt.vat_summary[vatLabel]?.vat || 0) }}</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-1 py-1 text-slate-700" colspan="2">Celkem {{ vatLabel }}</td>
+                                        <td class="px-1 py-1 text-right font-medium text-slate-800" colspan="2">{{ formatPrice(offlinePreviewReceipt.vat_summary[vatLabel]?.total || 0) }}</td>
+                                    </tr>
+                                </template>
+                                <tr class="border-y-2 border-teal-700 bg-teal-50/70">
+                                    <td class="px-1 py-1.5 text-left font-semibold text-teal-900">Celkem k uhrade</td>
+                                    <td class="px-1 py-1.5 text-right text-base font-semibold text-teal-900" colspan="3">{{ formatPrice(offlinePreviewReceipt.total) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </Modal>
@@ -2005,5 +2506,54 @@ onBeforeUnmount(() => {
     border: 0;
     border-radius: 0.75rem;
     background: #9aa9bf;
+}
+
+.dashboard-offline-preview-wrapper {
+    margin-top: 1rem;
+    max-height: min(72vh, 860px);
+    overflow: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #dbe9f1;
+    background: #f8fafc;
+    padding: 1rem;
+}
+
+.dashboard-offline-preview {
+    margin: 0 auto;
+    max-width: 720px;
+    border-radius: 0.75rem;
+    background: #fff;
+    padding: 0.75rem;
+}
+
+@media print {
+    :deep(body *) {
+        visibility: hidden;
+    }
+
+    :deep(.dashboard-offline-preview-wrapper),
+    :deep(.dashboard-offline-preview-wrapper *) {
+        visibility: visible;
+    }
+
+    :deep(.dashboard-offline-preview-wrapper) {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-height: none;
+        overflow: visible;
+        border: 0;
+        background: #fff;
+        padding: 0;
+        margin: 0;
+    }
+
+    :deep(.dashboard-offline-preview) {
+        max-width: 100%;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+    }
 }
 </style>

@@ -9,6 +9,28 @@
     <div class="text-[11px] leading-tight text-slate-800">
         <table class="w-full">
             <thead class="border-b border-teal-700">
+            <tr>
+                <td class="text-center font-semibold text-slate-900" colspan="100%">{{ $bill->supplier->company_name }}</td>
+            </tr>
+            @if($bill->supplier->full_name)
+                <tr>
+                    <td class="text-center text-slate-700" colspan="100%">{{ $bill->supplier->full_name }}</td>
+                </tr>
+            @endif
+            <tr>
+                <td class="text-center text-slate-700" colspan="100%">{{ $bill->supplier->street }}</td>
+            </tr>
+            <tr>
+                <td class="text-center text-slate-700" colspan="100%">{{ $bill->supplier->zip }} {{ $bill->supplier->city }}</td>
+            </tr>
+            <tr>
+                <td class="text-center text-slate-700" colspan="100%">IČ: {{ $bill->supplier->company_id }}</td>
+            </tr>
+            @if($bill->supplier->vat_id)
+                <tr>
+                    <td class="text-center text-slate-700" colspan="100%">DIČ: {{ $bill->supplier->vat_id }}</td>
+                </tr>
+            @endif
             <tr class="border-b border-teal-200 bg-teal-50/70">
                 <td class="px-1 py-1.5 font-semibold text-teal-900" colspan="2">Účtenka č.</td>
                 <td class="px-1 py-1.5 text-right font-semibold text-teal-900" colspan="2">{{ $bill->number }}</td>

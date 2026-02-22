@@ -61,6 +61,11 @@ class BillController extends Controller
     public function preview(Transaction $bill, Request $request)
     {
         $bill->load(['transactionItems.product']);
+        $supplier = $request->user();
+        $supplierFullName = trim(implode(' ', array_filter([
+            $supplier?->first_name,
+            $supplier?->last_name,
+        ])));
 
         $billItems = $bill->transactionItems
             ->sortBy('id')
@@ -87,6 +92,15 @@ class BillController extends Controller
             'created_at' => $bill->created_at,
             'total_price' => (float) $bill->total,
             'vat_rates' => array_keys($vatSummary),
+            'supplier' => (object) [
+                'company_name' => $supplier?->company_name,
+                'full_name' => $supplierFullName !== '' ? $supplierFullName : null,
+                'street' => $supplier?->street,
+                'zip' => $supplier?->zip,
+                'city' => $supplier?->city,
+                'company_id' => $supplier?->company_id,
+                'vat_id' => $supplier?->vat_id,
+            ],
         ];
 
         $view = $bill->status === 'order' ? 'bills.quotation' : 'bills.bill';
