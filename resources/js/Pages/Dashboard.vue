@@ -54,6 +54,17 @@ const manualAutocompleteId = 'manual-product-suggestions';
 const showAdjustmentModal = ref(false);
 const adjustmentFormType = ref('discount');
 const adjustmentFormPercent = ref(0);
+const showCustomerModal = ref(false);
+const customerOptions = ref([...(props.customers || [])]);
+const customerSearch = ref('');
+const selectedCustomerOption = ref(null);
+const customerAutocompleteOpen = ref(false);
+const highlightedCustomerSuggestionIndex = ref(-1);
+const customerModalError = ref('');
+const isSavingCustomer = ref(false);
+const customerInputContainerRef = ref(null);
+const isCustomerInputFocused = ref(false);
+const customerAutocompleteId = 'customer-suggestions';
 
 const openReceipts = computed(() => {
     const filteredServerReceipts = serverOpenReceipts.value.filter((receipt) => {
@@ -89,6 +100,27 @@ const manualProductSuggestions = computed(() => {
 
 const showManualAutocomplete = computed(() => {
     return autocompleteOpen.value && isManualProductInputFocused.value && manualProductSuggestions.value.length > 0;
+});
+
+const customerSuggestions = computed(() => {
+    const query = normalizeQuery(customerSearch.value);
+
+    if (!query) {
+        return customerOptions.value.slice(0, 8);
+    }
+
+    return customerOptions.value
+        .filter((customer) => {
+            const companyName = normalizeQuery(customer?.company_name);
+            const companyId = normalizeQuery(customer?.company_id);
+
+            return companyName.includes(query) || companyId.includes(query);
+        })
+        .slice(0, 8);
+});
+
+const showCustomerAutocomplete = computed(() => {
+    return customerAutocompleteOpen.value && isCustomerInputFocused.value && customerSuggestions.value.length > 0;
 });
 
 const filteredProducts = computed(() => {
@@ -239,6 +271,238 @@ const clearAdjustment = () => {
     closeAdjustmentDialog();
 };
 
+const normalizeCompanyId = (value) => String(value || '').replace(/\D+/g, '');
+
+const customerOptionLabel = (customer) => {
+    if (!customer) return '';
+
+    const name = customer.company_name || customerDisplayName(customer);
+    const companyId = customer.company_id ? ` (${customer.company_id})` : '';
+
+    return `${name}${companyId}`;
+};
+
+const appendOrReplaceCustomerOption = (customer) => {
+    if (!customer?.id) return;
+
+    const index = customerOptions.value.findIndex((option) => option.id === customer.id);
+    if (index === -1) {
+        customerOptions.value = [customer, ...customerOptions.value];
+        return;
+    }
+
+    customerOptions.value[index] = customer;
+};
+
+const closeCustomerAutocomplete = () => {
+    customerAutocompleteOpen.value = false;
+    highlightedCustomerSuggestionIndex.value = -1;
+};
+
+const openCustomerAutocomplete = () => {
+    customerAutocompleteOpen.value = true;
+    highlightedCustomerSuggestionIndex.value = customerSuggestions.value.length > 0 ? 0 : -1;
+};
+
+const selectCustomerOption = (customer) => {
+    selectedCustomerOption.value = customer;
+    customerSearch.value = customerOptionLabel(customer);
+    customerModalError.value = '';
+    closeCustomerAutocomplete();
+};
+
+const openCustomerDialog = () => {
+    if (!cart.currentTransaction) {
+        return;
+    }
+
+    const currentCustomer = cart.selectedCustomer || cart.currentTransaction?.customer || null;
+    selectedCustomerOption.value = currentCustomer;
+    customerSearch.value = currentCustomer ? customerOptionLabel(currentCustomer) : '';
+    customerModalError.value = '';
+    showCustomerModal.value = true;
+    openCustomerAutocomplete();
+};
+
+const closeCustomerDialog = () => {
+    showCustomerModal.value = false;
+    customerModalError.value = '';
+    isSavingCustomer.value = false;
+    closeCustomerAutocomplete();
+};
+
+const onCustomerInput = () => {
+    if (
+        selectedCustomerOption.value
+        && normalizeQuery(customerSearch.value) !== normalizeQuery(customerOptionLabel(selectedCustomerOption.value))
+    ) {
+        selectedCustomerOption.value = null;
+    }
+
+    customerModalError.value = '';
+    openCustomerAutocomplete();
+};
+
+const onCustomerFocus = () => {
+    isCustomerInputFocused.value = true;
+    openCustomerAutocomplete();
+};
+
+const onCustomerBlur = () => {
+    isCustomerInputFocused.value = false;
+    closeCustomerAutocomplete();
+};
+
+const onCustomerKeydown = (event) => {
+    if (event.key === 'Tab') {
+        closeCustomerAutocomplete();
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        closeCustomerAutocomplete();
+        return;
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (!customerAutocompleteOpen.value) {
+            openCustomerAutocomplete();
+            return;
+        }
+
+        const maxIndex = customerSuggestions.value.length - 1;
+        if (maxIndex < 0) return;
+        highlightedCustomerSuggestionIndex.value = Math.min(highlightedCustomerSuggestionIndex.value + 1, maxIndex);
+        return;
+    }
+
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (!customerAutocompleteOpen.value) {
+            openCustomerAutocomplete();
+            return;
+        }
+
+        if (customerSuggestions.value.length === 0) return;
+        highlightedCustomerSuggestionIndex.value = Math.max(highlightedCustomerSuggestionIndex.value - 1, 0);
+        return;
+    }
+
+    if (event.key === 'Enter') {
+        const hasHighlightedSuggestion = showCustomerAutocomplete.value
+            && highlightedCustomerSuggestionIndex.value >= 0
+            && highlightedCustomerSuggestionIndex.value < customerSuggestions.value.length;
+
+        if (hasHighlightedSuggestion) {
+            event.preventDefault();
+            selectCustomerOption(customerSuggestions.value[highlightedCustomerSuggestionIndex.value]);
+            return;
+        }
+
+        event.preventDefault();
+        saveSelectedCustomer();
+    }
+};
+
+const saveSelectedCustomer = async () => {
+    const activeTransaction = cart.currentTransaction;
+    if (!activeTransaction?.id) {
+        customerModalError.value = 'Please select an active receipt first.';
+        return;
+    }
+
+    if (isLocalTransaction(activeTransaction)) {
+        customerModalError.value = 'Customer assignment requires an online receipt.';
+        return;
+    }
+
+    if (isSavingCustomer.value) {
+        return;
+    }
+
+    const payload = {};
+    const normalizedIco = normalizeCompanyId(customerSearch.value);
+
+    if (selectedCustomerOption.value?.id) {
+        payload.customer_id = selectedCustomerOption.value.id;
+    } else if (/^\d{8}$/.test(normalizedIco)) {
+        payload.company_id = normalizedIco;
+    } else {
+        customerModalError.value = 'Select an existing customer or enter a valid 8-digit IČO.';
+        return;
+    }
+
+    isSavingCustomer.value = true;
+    customerModalError.value = '';
+
+    try {
+        const { data } = await axios.patch(route('dashboard.receipts.customer', activeTransaction.id), payload);
+        syncOpenReceiptsFromResponse(data);
+
+        if (data?.customer) {
+            appendOrReplaceCustomerOption(data.customer);
+            cart.setCustomer(data.customer);
+        } else {
+            cart.setCustomer(null);
+        }
+
+        closeCustomerDialog();
+    } catch (error) {
+        if (error?.response?.status === 422) {
+            const responseMessage = error?.response?.data?.message;
+            const firstValidationMessage = Object.values(error?.response?.data?.errors || {})[0]?.[0];
+            customerModalError.value = responseMessage || firstValidationMessage || 'Unable to select customer.';
+            return;
+        }
+
+        customerModalError.value = 'Unable to connect. Please try again.';
+    } finally {
+        isSavingCustomer.value = false;
+    }
+};
+
+const removeSelectedCustomer = async () => {
+    const activeTransaction = cart.currentTransaction;
+    if (!activeTransaction?.id) {
+        customerModalError.value = 'Please select an active receipt first.';
+        return;
+    }
+
+    if (isLocalTransaction(activeTransaction)) {
+        customerModalError.value = 'Customer assignment requires an online receipt.';
+        return;
+    }
+
+    if (isSavingCustomer.value) {
+        return;
+    }
+
+    isSavingCustomer.value = true;
+    customerModalError.value = '';
+
+    try {
+        const { data } = await axios.patch(route('dashboard.receipts.customer', activeTransaction.id), {
+            clear_customer: true,
+        });
+
+        syncOpenReceiptsFromResponse(data);
+        cart.setCustomer(null);
+        selectedCustomerOption.value = null;
+        customerSearch.value = '';
+        closeCustomerDialog();
+    } catch (error) {
+        if (error?.response?.status === 422) {
+            customerModalError.value = error?.response?.data?.message || 'Unable to remove customer.';
+            return;
+        }
+
+        customerModalError.value = 'Unable to connect. Please try again.';
+    } finally {
+        isSavingCustomer.value = false;
+    }
+};
+
 const closeManualAutocomplete = () => {
     autocompleteOpen.value = false;
     highlightedSuggestionIndex.value = -1;
@@ -352,6 +616,10 @@ const customerDisplayName = (customer) => {
 const handleDocumentClick = (event) => {
     if (!manualInputContainerRef.value?.contains(event.target)) {
         closeManualAutocomplete();
+    }
+
+    if (!customerInputContainerRef.value?.contains(event.target)) {
+        closeCustomerAutocomplete();
     }
 };
 
@@ -782,7 +1050,14 @@ onBeforeUnmount(() => {
                     >
                         Discount / Surcharge
                     </button>
-                    <button type="button" class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70">Select Customer</button>
+                    <button
+                        type="button"
+                        :disabled="!cart.currentTransaction"
+                        class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="openCustomerDialog"
+                    >
+                        Select Customer
+                    </button>
                     <button
                         type="button"
                         :disabled="isCreatingReceipt"
@@ -1224,6 +1499,105 @@ onBeforeUnmount(() => {
                 </section>
             </div>
         </div>
+
+        <Modal :show="showCustomerModal" max-width="2xl" @close="closeCustomerDialog">
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Find Customer</h3>
+                        <p class="mt-1 text-sm text-slate-500">Select an existing customer or enter an 8-digit IČO to fetch from ARES.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        @click="closeCustomerDialog"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div ref="customerInputContainerRef" class="relative mt-5">
+                    <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Company Name or IČO</label>
+                    <div class="relative">
+                        <input
+                            v-model="customerSearch"
+                            type="text"
+                            role="combobox"
+                            autocomplete="off"
+                            :aria-expanded="showCustomerAutocomplete"
+                            :aria-controls="customerAutocompleteId"
+                            :aria-activedescendant="highlightedCustomerSuggestionIndex >= 0 ? `customer-suggestion-${customerSuggestions[highlightedCustomerSuggestionIndex]?.id}` : undefined"
+                            class="h-10 w-full rounded-md border border-slate-200 px-3 pr-10 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            @input="onCustomerInput"
+                            @focus="onCustomerFocus"
+                            @blur="onCustomerBlur"
+                            @keydown="onCustomerKeydown"
+                        />
+                        <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="showCustomerAutocomplete"
+                        :id="customerAutocompleteId"
+                        role="listbox"
+                        class="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg"
+                    >
+                        <button
+                            v-for="(customer, customerIndex) in customerSuggestions"
+                            :id="`customer-suggestion-${customer.id}`"
+                            :key="customer.id"
+                            type="button"
+                            role="option"
+                            :aria-selected="highlightedCustomerSuggestionIndex === customerIndex"
+                            class="flex w-full items-start justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left last:border-b-0"
+                            :class="highlightedCustomerSuggestionIndex === customerIndex ? 'bg-teal-50' : 'bg-white hover:bg-slate-50'"
+                            @mousedown.prevent="selectCustomerOption(customer)"
+                            @mousemove="highlightedCustomerSuggestionIndex = customerIndex"
+                        >
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium text-slate-900">{{ customer.company_name || customerDisplayName(customer) }}</p>
+                                <p class="mt-0.5 text-xs text-slate-500">IČO: {{ customer.company_id || 'N/A' }}</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <p v-if="customerModalError" class="mt-3 text-sm font-medium text-rose-600">{{ customerModalError }}</p>
+
+                <div class="mt-6 flex items-center justify-end gap-2">
+                    <button
+                        v-if="cart.selectedCustomer"
+                        type="button"
+                        :disabled="isSavingCustomer || !cart.currentTransaction"
+                        class="inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="removeSelectedCustomer"
+                    >
+                        Remove Customer
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        @click="closeCustomerDialog"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="isSavingCustomer || !cart.currentTransaction"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="saveSelectedCustomer"
+                    >
+                        {{ isSavingCustomer ? 'Saving...' : 'Select Customer' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showAdjustmentModal" @close="closeAdjustmentDialog">
             <div class="p-6">

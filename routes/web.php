@@ -20,6 +20,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/receipts', [DashboardController::class, 'storeReceipt'])->name('dashboard.receipts.store');
+    Route::patch('/dashboard/receipts/{transaction}/customer', [DashboardController::class, 'updateReceiptCustomer'])->name('dashboard.receipts.customer');
     Route::patch('/dashboard/receipts/{transaction}/checkout', [DashboardController::class, 'checkoutReceipt'])->name('dashboard.receipts.checkout');
     Route::delete('/dashboard/receipts/{transaction}', [DashboardController::class, 'destroyReceipt'])->name('dashboard.receipts.destroy');
     Route::post('/api/offline-receipts/sync', [OfflineReceiptSyncController::class, 'store'])->name('offline.receipts.sync');

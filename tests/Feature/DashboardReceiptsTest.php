@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -136,6 +137,194 @@ class DashboardReceiptsTest extends TestCase
             'discount' => 0,
             'total' => 0,
         ]);
+    }
+
+    public function test_open_receipt_customer_can_be_set_to_existing_customer(): void
+    {
+        $user = User::factory()->create();
+        $customer = $this->createCustomer($user, [
+            'company_name' => 'Acme',
+            'company_id' => '12345678',
+        ]);
+        $transaction = $this->createTransaction($user, ['customer_id' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'customer_id' => $customer->id,
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('transaction.customer.id', $customer->id)
+            ->assertJsonPath('customer.id', $customer->id)
+            ->assertJsonPath('created_from_ares', false);
+
+        $this->assertDatabaseHas('transactions', [
+            'id' => $transaction->id,
+            'customer_id' => $customer->id,
+        ]);
+    }
+
+    public function test_open_receipt_customer_update_rejects_foreign_customer(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $foreignCustomer = $this->createCustomer($otherUser);
+        $transaction = $this->createTransaction($user, ['customer_id' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'customer_id' => $foreignCustomer->id,
+            ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['customer_id']);
+    }
+
+    public function test_open_receipt_customer_update_reuses_existing_customer_by_company_id_without_ares_call(): void
+    {
+        Http::fake();
+
+        $user = User::factory()->create();
+        $existingCustomer = $this->createCustomer($user, [
+            'company_name' => 'Existing Co',
+            'company_id' => '12345678',
+        ]);
+        $transaction = $this->createTransaction($user, ['customer_id' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'company_id' => '123 456 78',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('customer.id', $existingCustomer->id)
+            ->assertJsonPath('created_from_ares', false);
+
+        $this->assertDatabaseCount('customers', 1);
+        Http::assertNothingSent();
+    }
+
+    public function test_open_receipt_customer_update_creates_customer_from_ares_when_company_id_unknown(): void
+    {
+        Http::fake([
+            'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/*' => Http::response([
+                'dic' => 'CZ87654321',
+                'obchodniJmeno' => 'Ares Company s.r.o.',
+                'sidlo' => [
+                    'textovaAdresa' => 'Street 1, Praha',
+                    'nazevObce' => 'Praha',
+                    'psc' => '11000',
+                    'kodStatu' => 'CZ',
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['customer_id' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'company_id' => '87654321',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('created_from_ares', true)
+            ->assertJsonPath('customer.company_name', 'Ares Company s.r.o.')
+            ->assertJsonPath('customer.company_id', '87654321');
+
+        $this->assertDatabaseHas('customers', [
+            'user_id' => $user->id,
+            'company_name' => 'Ares Company s.r.o.',
+            'company_id' => '87654321',
+            'vat_id' => 'CZ87654321',
+            'city' => 'Praha',
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'id' => $transaction->id,
+            'customer_id' => $response->json('customer.id'),
+        ]);
+    }
+
+    public function test_open_receipt_customer_update_returns_422_when_ares_fails(): void
+    {
+        Http::fake([
+            'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/*' => Http::failedConnection(),
+        ]);
+
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['customer_id' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'company_id' => '87654321',
+            ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Company lookup failed. Please verify the company ID and try again.');
+
+        $this->assertDatabaseMissing('customers', [
+            'user_id' => $user->id,
+            'company_id' => '87654321',
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'id' => $transaction->id,
+            'customer_id' => null,
+        ]);
+    }
+
+    public function test_open_receipt_customer_can_be_cleared(): void
+    {
+        $user = User::factory()->create();
+        $customer = $this->createCustomer($user, [
+            'company_id' => '12121212',
+        ]);
+        $transaction = $this->createTransaction($user, [
+            'customer_id' => $customer->id,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'clear_customer' => true,
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('transaction.customer', null)
+            ->assertJsonPath('customer', null);
+
+        $this->assertDatabaseHas('transactions', [
+            'id' => $transaction->id,
+            'customer_id' => null,
+        ]);
+    }
+
+    public function test_user_gets_404_when_updating_another_users_receipt_customer(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $transaction = $this->createTransaction($otherUser, ['customer_id' => null]);
+        $customer = $this->createCustomer($user, ['company_id' => '11112222']);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.customer', $transaction), [
+                'customer_id' => $customer->id,
+            ]);
+
+        $response->assertNotFound();
     }
 
     public function test_checkout_recomputes_totals_persists_packages_and_assigns_ad_hoc_products_to_user(): void
