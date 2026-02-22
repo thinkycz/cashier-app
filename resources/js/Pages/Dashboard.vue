@@ -69,8 +69,13 @@ const showCheckoutModal = ref(false);
 const selectedCheckoutMethod = ref(null);
 const checkoutPaidAmount = ref(0);
 const checkoutModalError = ref('');
+const checkoutInfoMessage = ref('');
 const cashPaidInputRef = ref(null);
 const checkoutConfirmButtonRef = ref(null);
+const showBillPreviewModal = ref(false);
+const billPreviewUrl = ref('');
+const embeddedBillPreviewUrl = ref('');
+const billPreviewFrameRef = ref(null);
 
 const openReceipts = computed(() => {
     const filteredServerReceipts = serverOpenReceipts.value.filter((receipt) => {
@@ -846,11 +851,44 @@ const closeCheckoutModal = () => {
     resetCheckoutModalState();
 };
 
+const closeBillPreviewModal = () => {
+    showBillPreviewModal.value = false;
+};
+
+const openBillPreviewModal = (transactionId) => {
+    if (!transactionId) {
+        return;
+    }
+
+    const previewUrl = route('bills.preview', transactionId);
+    billPreviewUrl.value = previewUrl;
+    embeddedBillPreviewUrl.value = `${previewUrl}?embedded=1`;
+    showBillPreviewModal.value = true;
+};
+
+const printBillFromPreviewFrame = () => {
+    const frameWindow = billPreviewFrameRef.value?.contentWindow;
+
+    if (frameWindow) {
+        frameWindow.focus();
+        frameWindow.print();
+    }
+};
+
+const openPreviewInNewWindow = () => {
+    if (!billPreviewUrl.value) {
+        return;
+    }
+
+    window.open(billPreviewUrl.value, '_blank', 'noopener');
+};
+
 const openCheckoutModal = async (checkoutMethod) => {
     if (!canCheckout.value) {
         return;
     }
 
+    checkoutInfoMessage.value = '';
     selectedCheckoutMethod.value = checkoutMethod;
     checkoutPaidAmount.value = checkoutTotal.value;
     checkoutModalError.value = '';
@@ -869,12 +907,20 @@ const openCheckoutModal = async (checkoutMethod) => {
 
 const performCheckout = async (checkoutMethod) => {
     if (!canCheckout.value) {
-        return;
+        return {
+            previewable: false,
+            transactionId: null,
+            offlineCompleted: false,
+        };
     }
 
     const activeTransaction = cart.currentTransaction;
     if (!activeTransaction?.id) {
-        return;
+        return {
+            previewable: false,
+            transactionId: null,
+            offlineCompleted: false,
+        };
     }
 
     isCheckingOut.value = true;
@@ -902,7 +948,11 @@ const performCheckout = async (checkoutMethod) => {
                 await runSync();
             }
 
-            return;
+            return {
+                previewable: false,
+                transactionId: null,
+                offlineCompleted: true,
+            };
         }
 
         const { data } = await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
@@ -924,6 +974,12 @@ const performCheckout = async (checkoutMethod) => {
         });
         cart.clearTransactionItems(activeTransaction);
         syncOpenReceiptsFromResponse(data);
+
+        return {
+            previewable: Boolean(data?.transaction?.id),
+            transactionId: Number(data?.transaction?.id) || null,
+            offlineCompleted: false,
+        };
     } catch (error) {
         const canFallbackToOffline = offlineEnabled && (!isOnline.value || !error?.response);
 
@@ -944,6 +1000,12 @@ const performCheckout = async (checkoutMethod) => {
         if (isOnline.value) {
             await runSync();
         }
+
+        return {
+            previewable: false,
+            transactionId: null,
+            offlineCompleted: true,
+        };
     } finally {
         isCheckingOut.value = false;
     }
@@ -969,8 +1031,18 @@ const submitCheckout = async () => {
     checkoutModalError.value = '';
 
     try {
-        await performCheckout(checkoutMethod);
+        const checkoutResult = await performCheckout(checkoutMethod);
         closeCheckoutModal();
+
+        if (checkoutResult?.previewable && checkoutResult?.transactionId) {
+            await nextTick();
+            openBillPreviewModal(checkoutResult.transactionId);
+            return;
+        }
+
+        if (checkoutResult?.offlineCompleted) {
+            checkoutInfoMessage.value = 'Receipt was completed locally. Bill preview will be available after sync.';
+        }
     } catch {
         checkoutModalError.value = 'Unable to checkout. Please try again.';
     }
@@ -1383,6 +1455,22 @@ onBeforeUnmount(() => {
                                 Objednavka
                             </button>
                             </div>
+                            <div
+                                v-if="checkoutInfoMessage"
+                                class="mt-3 flex items-start justify-between gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"
+                            >
+                                <p>{{ checkoutInfoMessage }}</p>
+                                <button
+                                    type="button"
+                                    class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sky-700 transition-colors hover:bg-sky-100"
+                                    aria-label="Dismiss checkout info"
+                                    @click="checkoutInfoMessage = ''"
+                                >
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1702,6 +1790,55 @@ onBeforeUnmount(() => {
             </div>
         </Modal>
 
+        <Modal :show="showBillPreviewModal" max-width="2xl" @close="closeBillPreviewModal">
+            <div class="p-5">
+                <div class="flex items-start justify-between gap-4">
+                    <h3 class="text-lg font-semibold text-slate-900">Nahled uctenky</h3>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:from-teal-700 hover:to-cyan-700"
+                            @click="printBillFromPreviewFrame"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                            </svg>
+                            Vytisknout
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                            @click="openPreviewInNewWindow"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7m0 0v7m0-7L10 14" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h6m-6 0v14h14v-6" />
+                            </svg>
+                            Otevrit v novem okne
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            @click="closeBillPreviewModal"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dashboard-preview-canvas">
+                    <iframe
+                        ref="billPreviewFrameRef"
+                        :src="embeddedBillPreviewUrl"
+                        title="Nahled uctenky"
+                        class="dashboard-preview-frame"
+                    />
+                </div>
+            </div>
+        </Modal>
+
         <Modal :show="showCustomerModal" max-width="2xl" @close="closeCustomerDialog">
             <div class="p-6">
                 <div class="flex items-start justify-between gap-4">
@@ -1852,3 +1989,21 @@ onBeforeUnmount(() => {
         </Modal>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.dashboard-preview-canvas {
+    margin-top: 1rem;
+    height: min(72vh, 860px);
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: #9aa9bf;
+}
+
+.dashboard-preview-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0.75rem;
+    background: #9aa9bf;
+}
+</style>
