@@ -56,6 +56,12 @@ const userInitials = computed(() => {
                                     Products
                                 </NavLink>
                                 <NavLink
+                                    :href="route('customers.index')"
+                                    :active="route().current('customers.*')"
+                                >
+                                    Customers
+                                </NavLink>
+                                <NavLink
                                     :href="route('bills.index')"
                                     :active="route().current('bills.*')"
                                 >
@@ -162,6 +168,12 @@ const userInitials = computed(() => {
                             :active="route().current('products.*')"
                         >
                             Products
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('customers.index')"
+                            :active="route().current('customers.*')"
+                        >
+                            Customers
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('bills.index')"

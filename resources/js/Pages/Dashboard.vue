@@ -54,6 +54,13 @@ const productSubtitle = (product) => {
     return product.short_name || product.description || '';
 };
 
+const customerDisplayName = (customer) => {
+    if (!customer) return 'No customer selected';
+
+    const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
+    return fullName || customer.company_name || 'No customer selected';
+};
+
 const createNewTransaction = async () => {
     if (isCreatingReceipt.value) {
         return;
@@ -145,7 +152,7 @@ onMounted(() => {
                         <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                             <div>
                                 <h3 class="text-xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h3>
-                                <p class="mt-1 text-sm text-slate-500">{{ cart.selectedCustomer?.name || 'No customer selected' }}</p>
+                                <p class="mt-1 text-sm text-slate-500">{{ customerDisplayName(cart.selectedCustomer) }}</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" class="inline-flex items-center rounded-md border border-teal-100 bg-teal-50/60 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100/70">Discount / Surcharge</button>

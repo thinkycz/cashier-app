@@ -10,6 +10,13 @@ const props = defineProps({
     filters: Object,
 });
 
+const customerDisplayName = (customer) => {
+    if (!customer) return 'No customer';
+
+    const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
+    return fullName || customer.company_name || 'No customer';
+};
+
 const search = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || '');
 
@@ -136,7 +143,9 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                         <td class="px-5 py-4 align-top">
                                             <p class="text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
                                         </td>
-                                        <td class="px-5 py-4 align-top text-sm text-slate-700">{{ transaction.customer?.name || 'No customer' }}</td>
+                                        <td class="px-5 py-4 align-top text-sm text-slate-700">
+                                            {{ customerDisplayName(transaction.customer) }}
+                                        </td>
                                         <td class="px-5 py-4 align-top">
                                             <p class="text-sm font-medium text-slate-900">{{ formatDate(transaction.created_at) }}</p>
                                             <p class="mt-0.5 text-xs text-slate-500">{{ formatTime(transaction.created_at) }}</p>
@@ -182,7 +191,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <h3 class="text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</h3>
-                                        <p class="mt-1 text-xs text-slate-500">{{ transaction.customer?.name || 'No customer' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ customerDisplayName(transaction.customer) }}</p>
                                     </div>
                                     <span
                                         :class="getStatusColor(transaction.status)"

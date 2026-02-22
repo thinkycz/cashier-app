@@ -6,6 +6,13 @@ const props = defineProps({
     bill: Object,
 });
 
+const customerDisplayName = (customer) => {
+    if (!customer) return 'No customer';
+
+    const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
+    return fullName || customer.company_name || 'No customer';
+};
+
 const formatPrice = (price) => {
     return new Intl.NumberFormat('cs-CZ', {
         style: 'currency',
@@ -90,7 +97,7 @@ const printBill = () => {
                                     {{ bill.status }}
                                 </span>
                                 <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                                    Customer: {{ bill.customer?.name || 'No customer' }}
+                                    Customer: {{ customerDisplayName(bill.customer) }}
                                 </span>
                             </div>
                         </div>
@@ -137,7 +144,11 @@ const printBill = () => {
                         <dl class="space-y-4 px-6 py-5 text-sm">
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
                                 <dt class="text-slate-500">Name</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.name || 'No customer' }}</dd>
+                                <dd class="text-right font-medium text-slate-900">{{ customerDisplayName(bill.customer) }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                                <dt class="text-slate-500">Company ID</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.company_id || 'Not provided' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
                                 <dt class="text-slate-500">Email</dt>
@@ -145,7 +156,7 @@ const printBill = () => {
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Phone</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.phone || 'Not provided' }}</dd>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.phone_number || 'Not provided' }}</dd>
                             </div>
                         </dl>
                     </article>

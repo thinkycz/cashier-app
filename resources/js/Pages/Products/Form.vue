@@ -84,7 +84,7 @@ const submit = () => {
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Basic Information</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
@@ -144,7 +144,7 @@ const submit = () => {
                     </div>
 
                     <div class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Pricing</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">

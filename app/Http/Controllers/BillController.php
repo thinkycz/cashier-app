@@ -20,7 +20,10 @@ class BillController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_id', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($subQuery) use ($search) {
-                      $subQuery->where('name', 'like', "%{$search}%");
+                      $subQuery->where('first_name', 'like', "%{$search}%")
+                          ->orWhere('last_name', 'like', "%{$search}%")
+                          ->orWhere('company_name', 'like', "%{$search}%")
+                          ->orWhere('company_id', 'like', "%{$search}%");
                   });
             });
         }
