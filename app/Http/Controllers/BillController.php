@@ -34,7 +34,7 @@ class BillController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        $transactions = $query->orderBy('created_at', 'desc')->paginate(15);
+        $transactions = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return Inertia::render('Bills/Index', [
             'transactions' => $transactions,

@@ -72,6 +72,28 @@ class BillPagesTest extends TestCase
             );
     }
 
+    public function test_bills_index_can_filter_by_status(): void
+    {
+        $user = User::factory()->create();
+
+        $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
+        $this->createTransaction($user, ['status' => 'open']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('bills.index', ['status' => 'cash']));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Index')
+                ->where('filters.status', 'cash')
+                ->has('transactions.data', 1)
+                ->where('transactions.data.0.id', $cashTransaction->id)
+                ->where('transactions.data.0.status', 'cash')
+            );
+    }
+
     public function test_bills_show_includes_adjustment_fields_when_present(): void
     {
         $user = User::factory()->create();
