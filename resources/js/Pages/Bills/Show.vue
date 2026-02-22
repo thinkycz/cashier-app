@@ -57,6 +57,10 @@ const adjustmentAmount = () => {
     return Number(props.bill?.discount || 0);
 };
 
+const hasAdjustment = () => {
+    return adjustmentAmount() > 0;
+};
+
 const billTotalExcludingVat = () => {
     const subtotalExclVat = billSubtotalExcludingVat();
     const type = adjustmentType();
@@ -341,7 +345,7 @@ const adjustmentLabel = () => {
                                     <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billSubtotalExcludingVat()) }}</p>
                                 </dd>
                             </div>
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div v-if="hasAdjustment()" class="flex items-center justify-between border-b border-slate-100 pb-2">
                                 <dt class="text-slate-500">{{ adjustmentLabel() }}</dt>
                                 <dd
                                     class="text-right font-medium"
