@@ -105,56 +105,90 @@ defineProps({
                         <defs>
                             <linearGradient id="preview-bg" x1="0" y1="0" x2="1160" y2="620" gradientUnits="userSpaceOnUse">
                                 <stop stop-color="#F8FAFC" />
+                                <stop offset="0.6" stop-color="#EFFCF9" />
+                                <stop offset="1" stop-color="#ECFEFF" />
+                            </linearGradient>
+                            <linearGradient id="preview-panel" x1="30" y1="90" x2="1130" y2="590" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FFFFFF" />
+                                <stop offset="1" stop-color="#F3F8FC" />
+                            </linearGradient>
+                            <linearGradient id="preview-toolbar" x1="360" y1="86" x2="1130" y2="182" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#0F766E" />
+                                <stop offset="1" stop-color="#0891B2" />
+                            </linearGradient>
+                            <linearGradient id="preview-table" x1="360" y1="360" x2="1130" y2="590" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FFFFFF" />
                                 <stop offset="1" stop-color="#F0FDFA" />
                             </linearGradient>
-                            <linearGradient id="preview-panel" x1="26" y1="86" x2="1134" y2="592" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#FFFFFF" />
-                                <stop offset="1" stop-color="#F8FAFC" />
-                            </linearGradient>
-                            <linearGradient id="preview-surface" x1="40" y1="120" x2="1116" y2="584" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#F8FAFC" />
-                                <stop offset="1" stop-color="#F1F5F9" />
-                            </linearGradient>
+                            <radialGradient id="preview-glow-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1040 120) rotate(129.23) scale(184 128)">
+                                <stop stop-color="#67E8F9" stop-opacity="0.55" />
+                                <stop offset="1" stop-color="#67E8F9" stop-opacity="0" />
+                            </radialGradient>
+                            <radialGradient id="preview-glow-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(210 510) rotate(-20.5) scale(180 120)">
+                                <stop stop-color="#5EEAD4" stop-opacity="0.45" />
+                                <stop offset="1" stop-color="#5EEAD4" stop-opacity="0" />
+                            </radialGradient>
                         </defs>
 
-                        <rect x="1" y="1" width="1158" height="618" rx="20" fill="url(#preview-bg)" stroke="#D1FAE5" stroke-width="2" />
-                        <rect x="28" y="24" width="1104" height="44" rx="10" fill="url(#preview-panel)" stroke="#EAF2F7" />
-                        <rect x="46" y="38" width="164" height="12" rx="6" fill="#94A3B8" />
-                        <rect x="980" y="36" width="130" height="16" rx="8" fill="#ECFEFF" />
+                        <rect x="1" y="1" width="1158" height="618" rx="20" fill="url(#preview-bg)" stroke="#CCFBF1" stroke-width="2" />
+                        <rect x="760" y="36" width="340" height="220" fill="url(#preview-glow-a)" />
+                        <rect x="42" y="382" width="340" height="220" fill="url(#preview-glow-b)" />
 
-                        <rect x="28" y="88" width="310" height="500" rx="16" fill="url(#preview-panel)" stroke="#F1F5F9" />
-                        <rect x="45" y="106" width="276" height="92" rx="12" fill="url(#preview-surface)" />
-                        <rect x="63" y="126" width="88" height="10" rx="5" fill="#94A3B8" />
-                        <rect x="63" y="146" width="126" height="18" rx="7" fill="#334155" fill-opacity="0.75" />
+                        <rect x="28" y="24" width="1104" height="44" rx="10" fill="url(#preview-panel)" stroke="#DCEAF2" />
+                        <circle cx="48" cy="46" r="5" fill="#14B8A6" />
+                        <circle cx="64" cy="46" r="5" fill="#67E8F9" />
+                        <circle cx="80" cy="46" r="5" fill="#99F6E4" />
+                        <rect x="106" y="40" width="178" height="12" rx="6" fill="#7C8EA3" />
+                        <rect x="1008" y="36" width="104" height="20" rx="10" fill="#ECFEFF" />
 
-                        <rect x="45" y="220" width="276" height="148" rx="12" fill="url(#preview-panel)" stroke="#F1F5F9" />
-                        <rect x="65" y="244" width="230" height="10" rx="5" fill="#CBD5E1" />
-                        <rect x="65" y="264" width="176" height="10" rx="5" fill="#E2E8F0" />
-                        <rect x="65" y="294" width="230" height="10" rx="5" fill="#E2E8F0" />
+                        <rect x="28" y="88" width="304" height="500" rx="16" fill="url(#preview-panel)" stroke="#E6F1F6" />
+                        <rect x="48" y="112" width="264" height="64" rx="12" fill="#F0FDFA" />
+                        <rect x="66" y="128" width="96" height="10" rx="5" fill="#5F748B" />
+                        <rect x="66" y="146" width="146" height="12" rx="6" fill="#9DB0C2" />
+                        <rect x="48" y="196" width="264" height="2" rx="1" fill="#E2E8F0" />
 
-                        <rect x="45" y="390" width="276" height="180" rx="12" fill="url(#preview-panel)" stroke="#F1F5F9" />
-                        <rect x="65" y="418" width="112" height="10" rx="5" fill="#CBD5E1" />
-                        <rect x="65" y="438" width="220" height="10" rx="5" fill="#E2E8F0" />
+                        <rect x="48" y="222" width="264" height="118" rx="12" fill="#FFFFFF" stroke="#E7EEF4" />
+                        <rect x="64" y="242" width="118" height="9" rx="4.5" fill="#6A7F95" />
+                        <rect x="64" y="262" width="220" height="8" rx="4" fill="#D3DEE8" />
+                        <rect x="64" y="278" width="172" height="8" rx="4" fill="#E2EAF1" />
+                        <rect x="64" y="300" width="220" height="24" rx="7" fill="#ECFEFF" />
 
-                        <rect x="360" y="88" width="772" height="96" rx="16" fill="url(#preview-panel)" stroke="#EAF2F7" />
-                        <rect x="388" y="118" width="186" height="14" rx="7" fill="#64748B" />
-                        <rect x="388" y="140" width="164" height="10" rx="5" fill="#CBD5E1" />
-                        <rect x="1004" y="116" width="106" height="34" rx="8" fill="#E0F2FE" />
+                        <rect x="48" y="362" width="264" height="206" rx="12" fill="#FFFFFF" stroke="#E7EEF4" />
+                        <rect x="64" y="386" width="142" height="9" rx="4.5" fill="#6A7F95" />
+                        <rect x="64" y="410" width="220" height="8" rx="4" fill="#D3DEE8" />
+                        <rect x="64" y="426" width="182" height="8" rx="4" fill="#E2EAF1" />
+                        <rect x="64" y="458" width="220" height="86" rx="10" fill="#F0FDFA" />
+                        <rect x="82" y="478" width="126" height="8" rx="4" fill="#8AA0B6" />
+                        <rect x="82" y="500" width="184" height="24" rx="7" fill="#FFFFFF" stroke="#D8E6EE" />
 
-                        <rect x="360" y="204" width="772" height="146" rx="16" fill="url(#preview-panel)" stroke="#F1F5F9" />
-                        <rect x="386" y="224" width="114" height="10" rx="5" fill="#94A3B8" />
-                        <rect x="386" y="258" width="716" height="30" rx="9" fill="url(#preview-surface)" />
-                        <rect x="386" y="298" width="716" height="30" rx="9" fill="url(#preview-surface)" />
+                        <rect x="360" y="88" width="772" height="112" rx="16" fill="url(#preview-toolbar)" />
+                        <rect x="388" y="116" width="204" height="14" rx="7" fill="#E6FFFB" fill-opacity="0.9" />
+                        <rect x="388" y="140" width="168" height="10" rx="5" fill="#BDFCF3" fill-opacity="0.8" />
+                        <rect x="988" y="114" width="122" height="36" rx="10" fill="#ECFEFF" />
 
-                        <rect x="360" y="370" width="772" height="218" rx="16" fill="url(#preview-panel)" stroke="#F1F5F9" />
-                        <rect x="386" y="392" width="122" height="10" rx="5" fill="#94A3B8" />
-                        <rect x="386" y="426" width="360" height="34" rx="8" fill="#FFFFFF" stroke="#CBD5E1" />
-                        <rect x="1004" y="426" width="98" height="34" rx="8" fill="#E0F2FE" />
+                        <rect x="360" y="224" width="372" height="130" rx="16" fill="#FFFFFF" stroke="#E6F1F6" />
+                        <rect x="378" y="246" width="130" height="10" rx="5" fill="#6D8298" />
+                        <rect x="378" y="270" width="332" height="12" rx="6" fill="#D9E4ED" />
+                        <rect x="378" y="292" width="208" height="12" rx="6" fill="#E5EDF3" />
+                        <rect x="378" y="316" width="332" height="18" rx="8" fill="#ECFEFF" />
 
-                        <rect x="386" y="490" width="716" height="82" rx="10" fill="url(#preview-surface)" />
-                        <line x1="386" y1="528" x2="1102" y2="528" stroke="#F8FAFC" stroke-width="2" />
-                        <rect x="408" y="504" width="120" height="8" rx="4" fill="#CBD5E1" />
-                        <rect x="934" y="538" width="150" height="12" rx="6" fill="#CCFBF1" />
+                        <rect x="760" y="224" width="372" height="130" rx="16" fill="#FFFFFF" stroke="#E6F1F6" />
+                        <rect x="778" y="246" width="148" height="10" rx="5" fill="#6D8298" />
+                        <rect x="778" y="272" width="334" height="64" rx="10" fill="#F0FDFA" />
+                        <path d="M796 314C828 266 860 326 892 288C924 250 956 320 988 294C1018 268 1050 332 1084 300" stroke="#14B8A6" stroke-width="3" stroke-linecap="round" />
+                        <circle cx="892" cy="288" r="5" fill="#06B6D4" />
+
+                        <rect x="360" y="374" width="772" height="214" rx="16" fill="url(#preview-table)" stroke="#DDECF4" />
+                        <rect x="384" y="398" width="146" height="10" rx="5" fill="#6D8298" />
+                        <rect x="384" y="424" width="424" height="34" rx="9" fill="#FFFFFF" stroke="#D3E3EC" />
+                        <rect x="1010" y="424" width="98" height="34" rx="9" fill="#CCFBF1" />
+                        <rect x="384" y="476" width="724" height="90" rx="12" fill="#FFFFFF" stroke="#E5EEF4" />
+                        <line x1="384" y1="508" x2="1108" y2="508" stroke="#E9F2F7" stroke-width="2" />
+                        <line x1="384" y1="536" x2="1108" y2="536" stroke="#E9F2F7" stroke-width="2" />
+                        <rect x="404" y="488" width="148" height="8" rx="4" fill="#9FB2C4" />
+                        <rect x="958" y="488" width="132" height="10" rx="5" fill="#D6FBF4" />
+                        <rect x="404" y="516" width="106" height="8" rx="4" fill="#CCD8E3" />
+                        <rect x="972" y="516" width="118" height="10" rx="5" fill="#E0F2FE" />
                     </svg>
                 </div>
             </div>
