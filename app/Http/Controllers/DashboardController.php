@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -50,6 +51,13 @@ class DashboardController extends Controller
             'subtotal' => ['required', 'numeric', 'min:0'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'total' => ['required', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'items.*.product_name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'numeric', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.vat_rate' => ['nullable', 'numeric', 'min:0'],
+            'items.*.total' => ['required', 'numeric', 'min:0'],
         ]);
 
         if ($transaction->status !== 'open') {
@@ -58,16 +66,40 @@ class DashboardController extends Controller
             ], 422);
         }
 
-        $notes = trim((string) $transaction->notes);
-        $checkoutNote = sprintf('checkout_method:%s', $validated['checkout_method']);
+        DB::transaction(function () use ($transaction, $validated) {
+            $transaction->transactionItems()->delete();
 
-        $transaction->update([
-            'subtotal' => $validated['subtotal'],
-            'discount' => $validated['discount'] ?? 0,
-            'total' => $validated['total'],
-            'status' => $validated['checkout_method'],
-            'notes' => $notes !== '' ? "{$notes}\n{$checkoutNote}" : $checkoutNote,
-        ]);
+            foreach ($validated['items'] as $item) {
+                $productId = $item['product_id'] ?? null;
+
+                if (!$productId) {
+                    $product = Product::create([
+                        'name' => $item['product_name'],
+                        'ean' => null,
+                        'vat_rate' => $item['vat_rate'] ?? 0,
+                        'price' => $item['unit_price'],
+                        'is_active' => false,
+                    ]);
+
+                    $productId = $product->id;
+                }
+
+                $transaction->transactionItems()->create([
+                    'product_id' => $productId,
+                    'quantity' => (int) $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'vat_rate' => $item['vat_rate'] ?? 0,
+                    'total' => $item['total'],
+                ]);
+            }
+
+            $transaction->update([
+                'subtotal' => $validated['subtotal'],
+                'discount' => $validated['discount'] ?? 0,
+                'total' => $validated['total'],
+                'status' => $validated['checkout_method'],
+            ]);
+        });
 
         return response()->json([
             'transaction' => $transaction->fresh(['customer', 'transactionItems.product']),

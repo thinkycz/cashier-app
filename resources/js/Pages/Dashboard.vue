@@ -146,6 +146,19 @@ const checkoutReceipt = async (checkoutMethod) => {
             subtotal: cart.subtotal,
             discount: Number(activeTransaction.discount || 0),
             total: cart.total,
+            items: cart.items.map((item) => {
+                const parsedProductId = Number(item.product?.id);
+                const productId = Number.isInteger(parsedProductId) && parsedProductId > 0 ? parsedProductId : null;
+
+                return {
+                    product_id: productId,
+                    product_name: item.product?.name || 'Unknown product',
+                    quantity: Number(item.quantity || 0),
+                    unit_price: Number(item.unit_price || 0),
+                    vat_rate: Number(item.vat_rate || 0),
+                    total: Number(item.total || 0),
+                };
+            }),
         });
 
         openReceipts.value = openReceipts.value.filter((receipt) => receipt.id !== activeTransaction.id);
