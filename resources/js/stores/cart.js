@@ -316,6 +316,8 @@ export const useCartStore = defineStore('cart', () => {
         setAdjustment,
         clearAdjustment,
         recalculateCurrentReceiptItems,
+        createLocalTransactionShell,
+        loadTransactionByIdentity,
     };
 
     function getCurrentItems() {
@@ -492,6 +494,49 @@ export const useCartStore = defineStore('cart', () => {
         return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     }
 
+    function createLocalTransactionShell() {
+        const localId = `temp:${createLocalUuid()}`;
+        const transaction = {
+            id: localId,
+            transaction_id: createTemporaryReceiptCode(),
+            customer: null,
+            transaction_items: [],
+            subtotal: 0,
+            discount: 0,
+            adjustment_type: null,
+            adjustment_percent: 0,
+            adjustment_amount: 0,
+            total: 0,
+            status: 'open',
+            is_local: true,
+            state: 'open',
+            sync_status: 'not_needed',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+
+        setTransaction(transaction);
+
+        return transaction;
+    }
+
+    function loadTransactionByIdentity(identity, receipts = []) {
+        if (!identity) {
+            return null;
+        }
+
+        const matchedReceipt = receipts.find((receipt) => {
+            return receipt?.id === identity || receipt?.transaction_id === identity;
+        }) || null;
+
+        if (matchedReceipt) {
+            setTransaction(matchedReceipt);
+            return matchedReceipt;
+        }
+
+        return null;
+    }
+
     function normalizeProductId(value) {
         const parsed = Number(value);
         return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -505,5 +550,23 @@ export const useCartStore = defineStore('cart', () => {
         transaction.adjustment_type = normalizeAdjustmentType(transaction.adjustment_type);
         transaction.adjustment_percent = clampPercent(transaction.adjustment_percent ?? 0);
         transaction.adjustment_amount = roundMoney(transaction.adjustment_amount ?? 0);
+    }
+
+    function createTemporaryReceiptCode() {
+        const date = new Date();
+        const yy = String(date.getFullYear()).slice(-2);
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+
+        return `OFF${yy}${mm}${dd}${random}`;
+    }
+
+    function createLocalUuid() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+
+        return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OfflineReceiptSyncController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BillController;
@@ -21,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dashboard/receipts', [DashboardController::class, 'storeReceipt'])->name('dashboard.receipts.store');
     Route::patch('/dashboard/receipts/{transaction}/checkout', [DashboardController::class, 'checkoutReceipt'])->name('dashboard.receipts.checkout');
     Route::delete('/dashboard/receipts/{transaction}', [DashboardController::class, 'destroyReceipt'])->name('dashboard.receipts.destroy');
+    Route::post('/api/offline-receipts/sync', [OfflineReceiptSyncController::class, 'store'])->name('offline.receipts.sync');
 });
 
 Route::middleware('auth')->group(function () {

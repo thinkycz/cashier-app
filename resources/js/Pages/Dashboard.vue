@@ -3,8 +3,19 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useCartStore } from '@/stores/cart';
+import {
+    completeLocalReceipt,
+    createLocalReceipt,
+    deleteLocalReceipt,
+    isOfflineReceiptsEnabled,
+    listOpenLocalReceipts,
+    listUnsyncedCompletedReceipts,
+    retrySync,
+    updateLocalReceipt,
+} from '@/offline/receiptRepository';
+import { runSync } from '@/offline/syncEngine';
 import axios from 'axios';
 
 const cart = useCartStore();
@@ -17,7 +28,12 @@ const props = defineProps({
 });
 
 const searchQuery = ref('');
-const openReceipts = ref([...(props.openTransactions || [])]);
+const serverOpenReceipts = ref([...(props.openTransactions || [])]);
+const localOpenReceipts = ref([]);
+const syncQueueReceipts = ref([]);
+const hiddenServerReceiptIds = ref([]);
+const offlineEnabled = isOfflineReceiptsEnabled();
+const isOnline = ref(typeof window !== 'undefined' ? window.navigator.onLine : true);
 const isCreatingReceipt = ref(false);
 const isCheckingOut = ref(false);
 const deletingReceiptId = ref(null);
@@ -38,6 +54,21 @@ const manualAutocompleteId = 'manual-product-suggestions';
 const showAdjustmentModal = ref(false);
 const adjustmentFormType = ref('discount');
 const adjustmentFormPercent = ref(0);
+
+const openReceipts = computed(() => {
+    const filteredServerReceipts = serverOpenReceipts.value.filter((receipt) => {
+        return !hiddenServerReceiptIds.value.includes(receipt?.id);
+    });
+    const merged = [...filteredServerReceipts, ...localOpenReceipts.value];
+
+    return merged.sort((left, right) => {
+        return new Date(right?.created_at || 0).getTime() - new Date(left?.created_at || 0).getTime();
+    });
+});
+
+const pendingSyncCount = computed(() => {
+    return syncQueueReceipts.value.filter((receipt) => receipt?.sync_status === 'pending' || receipt?.sync_status === 'failed').length;
+});
 
 const normalizeQuery = (value) => String(value || '').trim().toLowerCase();
 
@@ -324,6 +355,120 @@ const handleDocumentClick = (event) => {
     }
 };
 
+const isLocalTransaction = (transaction) => {
+    return String(transaction?.id || '').startsWith('temp:') || Boolean(transaction?.is_local);
+};
+
+const cloneCartItemsPayload = () => {
+    return cart.items.map((item) => {
+        const parsedProductId = Number(item.product_id ?? item.product?.id);
+        const productId = Number.isInteger(parsedProductId) && parsedProductId > 0 ? parsedProductId : null;
+
+        return {
+            line_id: item.line_id,
+            product_id: productId,
+            product: item.product ? { ...item.product } : null,
+            packages: Number(item.packages || 1),
+            quantity: Number(item.quantity || 0),
+            base_unit_price: Number(item.base_unit_price || item.unit_price || 0),
+            unit_price: Number(item.unit_price || 0),
+            vat_rate: Number(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
+            total: Number(item.total || 0),
+        };
+    });
+};
+
+const buildLocalReceiptSnapshot = (transaction, overrides = {}) => {
+    const now = new Date().toISOString();
+
+    return {
+        ...transaction,
+        id: transaction?.id,
+        transaction_id: transaction?.transaction_id || `OFF${Date.now()}`,
+        customer: cart.selectedCustomer ? { ...cart.selectedCustomer } : null,
+        adjustment_type: transaction?.adjustment_type || null,
+        adjustment_percent: Number(transaction?.adjustment_percent || 0),
+        adjustment_amount: Number(transaction?.adjustment_amount || 0),
+        subtotal: Number(cart.subtotal || 0),
+        total: Number(cart.total || 0),
+        items: cloneCartItemsPayload(),
+        is_local: true,
+        updated_at: now,
+        ...overrides,
+    };
+};
+
+const createCompletedLocalReceiptFromServerTransaction = async (serverTransaction, checkoutMethod) => {
+    const itemsSnapshot = cloneCartItemsPayload();
+    const customerSnapshot = cart.selectedCustomer ? { ...cart.selectedCustomer } : null;
+    const subtotalSnapshot = Number(cart.subtotal || 0);
+    const totalSnapshot = Number(cart.total || 0);
+    const adjustmentTypeSnapshot = serverTransaction?.adjustment_type || null;
+    const adjustmentPercentSnapshot = Number(serverTransaction?.adjustment_percent || 0);
+    const adjustmentAmountSnapshot = Number(serverTransaction?.adjustment_amount || 0);
+
+    const temporaryLocalTransaction = cart.createLocalTransactionShell();
+    const completedLocalReceipt = buildLocalReceiptSnapshot(temporaryLocalTransaction, {
+        customer: customerSnapshot,
+        adjustment_type: adjustmentTypeSnapshot,
+        adjustment_percent: adjustmentPercentSnapshot,
+        adjustment_amount: adjustmentAmountSnapshot,
+        subtotal: subtotalSnapshot,
+        total: totalSnapshot,
+        items: itemsSnapshot,
+        checkout_method: checkoutMethod,
+        state: 'completed',
+        sync_status: 'pending',
+        status: checkoutMethod,
+        completed_at: new Date().toISOString(),
+        source_transaction_id: Number(serverTransaction?.id || 0) || null,
+        source_transaction_code: serverTransaction?.transaction_id || null,
+    });
+
+    await createLocalReceipt({
+        ...completedLocalReceipt,
+        state: 'open',
+        sync_status: 'not_needed',
+        status: 'open',
+    });
+
+    await completeLocalReceipt(temporaryLocalTransaction.id, completedLocalReceipt);
+    hiddenServerReceiptIds.value = [
+        ...hiddenServerReceiptIds.value.filter((id) => id !== serverTransaction?.id),
+        serverTransaction?.id,
+    ].filter(Boolean);
+};
+
+const refreshLocalReceiptViews = async () => {
+    if (!offlineEnabled) {
+        localOpenReceipts.value = [];
+        syncQueueReceipts.value = [];
+        return;
+    }
+
+    localOpenReceipts.value = await listOpenLocalReceipts();
+    syncQueueReceipts.value = await listUnsyncedCompletedReceipts();
+};
+
+const persistActiveLocalReceipt = async () => {
+    const currentTransaction = cart.currentTransaction;
+    if (!currentTransaction || !isLocalTransaction(currentTransaction)) {
+        return;
+    }
+
+    if (currentTransaction.state === 'completed') {
+        return;
+    }
+
+    const snapshot = buildLocalReceiptSnapshot(currentTransaction, {
+        state: 'open',
+        sync_status: currentTransaction?.sync_status || 'not_needed',
+        status: 'open',
+    });
+
+    await updateLocalReceipt(currentTransaction.id, snapshot);
+};
+
 const createNewTransaction = async () => {
     if (isCreatingReceipt.value) {
         return;
@@ -332,8 +477,27 @@ const createNewTransaction = async () => {
     isCreatingReceipt.value = true;
 
     try {
-        const { data } = await axios.post(route('dashboard.receipts.store'));
-        syncOpenReceiptsFromResponse(data);
+        if (isOnline.value) {
+            const { data } = await axios.post(route('dashboard.receipts.store'), {}, { timeout: 5000 });
+            syncOpenReceiptsFromResponse(data);
+            return;
+        }
+
+        throw new Error('offline');
+    } catch {
+        if (!offlineEnabled) {
+            return;
+        }
+
+        const transaction = cart.createLocalTransactionShell();
+        await createLocalReceipt(buildLocalReceiptSnapshot(transaction, {
+            state: 'open',
+            sync_status: 'not_needed',
+            status: 'open',
+            created_at: transaction.created_at,
+        }));
+        await refreshLocalReceiptViews();
+        cart.setTransaction(transaction);
     } finally {
         isCreatingReceipt.value = false;
     }
@@ -352,30 +516,70 @@ const checkoutReceipt = async (checkoutMethod) => {
     isCheckingOut.value = true;
 
     try {
+        if (isLocalTransaction(activeTransaction)) {
+            await completeLocalReceipt(activeTransaction.id, buildLocalReceiptSnapshot(activeTransaction, {
+                checkout_method: checkoutMethod,
+                state: 'completed',
+                sync_status: 'pending',
+                status: checkoutMethod,
+                completed_at: new Date().toISOString(),
+            }));
+
+            cart.clearTransactionItems(activeTransaction);
+            await refreshLocalReceiptViews();
+
+            if (openReceipts.value.length > 0) {
+                cart.setTransaction(openReceipts.value[0]);
+            } else {
+                cart.setTransaction(null);
+            }
+
+            if (isOnline.value) {
+                await runSync();
+            }
+
+            return;
+        }
+
         const { data } = await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
             checkout_method: checkoutMethod,
             subtotal: cart.subtotal,
             total: cart.total,
             adjustment_type: activeTransaction.adjustment_type || null,
             adjustment_percent: Number(activeTransaction.adjustment_percent || 0),
-            items: cart.items.map((item) => {
-                const parsedProductId = Number(item.product_id ?? item.product?.id);
-                const productId = Number.isInteger(parsedProductId) && parsedProductId > 0 ? parsedProductId : null;
-
-                return {
-                    product_id: productId,
-                    product_name: item.product?.name || 'Unknown product',
-                    packages: Number(item.packages || 1),
-                    quantity: Number(item.quantity || 0),
-                    base_unit_price: Number(item.base_unit_price || item.unit_price || 0),
-                    unit_price: Number(item.unit_price || 0),
-                    vat_rate: Number(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
-                    total: Number(item.total || 0),
-                };
-            }),
+            items: cloneCartItemsPayload().map((item) => ({
+                product_id: item.product_id,
+                product_name: item.product?.name || 'Unknown product',
+                packages: item.packages,
+                quantity: item.quantity,
+                base_unit_price: item.base_unit_price,
+                unit_price: item.unit_price,
+                vat_rate: item.vat_rate,
+                total: item.total,
+            })),
         });
         cart.clearTransactionItems(activeTransaction);
         syncOpenReceiptsFromResponse(data);
+    } catch (error) {
+        const canFallbackToOffline = offlineEnabled && (!isOnline.value || !error?.response);
+
+        if (!canFallbackToOffline) {
+            throw error;
+        }
+
+        await createCompletedLocalReceiptFromServerTransaction(activeTransaction, checkoutMethod);
+        cart.clearTransactionItems(activeTransaction);
+        await refreshLocalReceiptViews();
+
+        if (openReceipts.value.length > 0) {
+            cart.setTransaction(openReceipts.value[0]);
+        } else {
+            cart.setTransaction(null);
+        }
+
+        if (isOnline.value) {
+            await runSync();
+        }
     } finally {
         isCheckingOut.value = false;
     }
@@ -393,13 +597,53 @@ const receiptDisplayTotal = (transaction) => {
     return cart.getReceiptTotal(transaction);
 };
 
+const receiptSyncLabel = (transaction) => {
+    if (!isLocalTransaction(transaction)) {
+        return 'Synced';
+    }
+
+    switch (transaction?.sync_status) {
+    case 'pending':
+        return 'Pending sync';
+    case 'syncing':
+        return 'Syncing';
+    case 'failed':
+        return 'Sync failed';
+    case 'synced':
+        return 'Synced';
+    default:
+        return 'Local draft';
+    }
+};
+
+const receiptStatusDotClass = (transaction) => {
+    if (!isLocalTransaction(transaction) || transaction?.sync_status === 'synced') {
+        return 'bg-emerald-500';
+    }
+
+    if (transaction?.sync_status === 'failed') {
+        return 'bg-rose-500';
+    }
+
+    if (
+        transaction?.sync_status === 'pending'
+        || transaction?.sync_status === 'syncing'
+        || transaction?.sync_status === 'not_needed'
+        || transaction?.state === 'open'
+    ) {
+        return 'bg-amber-500';
+    }
+
+    return 'bg-amber-500';
+};
+
 const syncOpenReceiptsFromResponse = (data) => {
     const openTransactions = Array.isArray(data?.open_transactions) ? data.open_transactions : [];
-    openReceipts.value = openTransactions;
+    serverOpenReceipts.value = openTransactions;
 
     const activeTransaction = openTransactions.find(
         (transaction) => transaction.id === data?.active_transaction_id,
-    ) || openTransactions[0] || null;
+    ) || cart.currentTransaction || openReceipts.value[0] || null;
 
     cart.setTransaction(activeTransaction);
 };
@@ -412,6 +656,18 @@ const deleteReceipt = async (transaction) => {
     deletingReceiptId.value = transaction.id;
 
     try {
+        if (isLocalTransaction(transaction)) {
+            await deleteLocalReceipt(transaction.id);
+            cart.clearTransactionItems(transaction);
+            await refreshLocalReceiptViews();
+
+            if (!cart.currentTransaction && openReceipts.value.length > 0) {
+                cart.setTransaction(openReceipts.value[0]);
+            }
+
+            return;
+        }
+
         const { data } = await axios.delete(route('dashboard.receipts.destroy', transaction.id));
         cart.clearTransactionItems(transaction);
         syncOpenReceiptsFromResponse(data);
@@ -420,16 +676,75 @@ const deleteReceipt = async (transaction) => {
     }
 };
 
-onMounted(() => {
+const retryFailedSync = async (receiptId) => {
+    const queued = await retrySync(receiptId);
+    if (!queued) {
+        return;
+    }
+
+    await refreshLocalReceiptViews();
+    if (isOnline.value) {
+        await runSync();
+    }
+};
+
+const connectionChanged = () => {
+    isOnline.value = window.navigator.onLine;
+    if (isOnline.value) {
+        runSync().catch(() => {});
+    }
+};
+
+const refreshFromOfflineEvent = () => {
+    refreshLocalReceiptViews().catch(() => {});
+};
+
+watch(() => ({
+    id: cart.currentTransaction?.id || null,
+    subtotal: cart.subtotal,
+    total: cart.total,
+    adjustmentType: cart.currentTransaction?.adjustment_type || null,
+    adjustmentPercent: Number(cart.currentTransaction?.adjustment_percent || 0),
+    customerId: cart.selectedCustomer?.id || null,
+    itemSignature: JSON.stringify(cart.items.map((item) => ({
+        line_id: item.line_id,
+        product_id: item.product_id ?? item.product?.id,
+        packages: item.packages,
+        quantity: item.quantity,
+        base_unit_price: item.base_unit_price,
+        unit_price: item.unit_price,
+        vat_rate: item.vat_rate,
+        total: item.total,
+    }))),
+}), () => {
+    persistActiveLocalReceipt().catch(() => {});
+});
+
+onMounted(async () => {
+    await refreshLocalReceiptViews();
+
+    if (cart.currentTransaction) {
+        cart.loadTransactionByIdentity(
+            cart.currentTransaction.id || cart.currentTransaction.transaction_id,
+            openReceipts.value,
+        );
+    }
+
     if (openReceipts.value.length > 0 && !cart.currentTransaction) {
         cart.setTransaction(openReceipts.value[0]);
     }
 
     document.addEventListener('click', handleDocumentClick);
+    window.addEventListener('online', connectionChanged);
+    window.addEventListener('offline', connectionChanged);
+    window.addEventListener('offline-receipts:updated', refreshFromOfflineEvent);
 });
 
 onBeforeUnmount(() => {
     document.removeEventListener('click', handleDocumentClick);
+    window.removeEventListener('online', connectionChanged);
+    window.removeEventListener('offline', connectionChanged);
+    window.removeEventListener('offline-receipts:updated', refreshFromOfflineEvent);
 });
 </script>
 
@@ -442,6 +757,21 @@ onBeforeUnmount(() => {
                 <div class="min-w-0">
                     <h2 class="text-2xl font-semibold text-slate-900">{{ activeReceiptLabel }}</h2>
                     <p class="mt-1 text-sm text-slate-600">{{ customerDisplayName(cart.selectedCustomer) }}</p>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                            <span
+                                class="h-2.5 w-2.5 rounded-full"
+                                :class="isOnline ? 'bg-emerald-500' : 'bg-amber-500'"
+                            ></span>
+                            {{ isOnline ? 'Online mode' : 'Offline mode' }}
+                        </span>
+                        <span
+                            v-if="offlineEnabled && pendingSyncCount > 0"
+                            class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                        >
+                            {{ pendingSyncCount }} pending sync
+                        </span>
+                    </div>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <button
@@ -663,6 +993,20 @@ onBeforeUnmount(() => {
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
                             <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
+                            <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                                    Synced
+                                </span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                                    Local / Pending
+                                </span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                                    Failed
+                                </span>
+                            </div>
                         </div>
                         <div class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
                             <article
@@ -687,7 +1031,15 @@ onBeforeUnmount(() => {
                                         </svg>
                                     </div>
                                     <div class="min-w-0 py-3">
-                                        <p class="truncate text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
+                                        <div class="flex min-w-0 items-center gap-2">
+                                            <span
+                                                class="inline-flex h-2.5 w-2.5 shrink-0 rounded-full"
+                                                :class="receiptStatusDotClass(transaction)"
+                                                :title="receiptSyncLabel(transaction)"
+                                                :aria-label="receiptSyncLabel(transaction)"
+                                            ></span>
+                                            <p class="truncate text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
+                                        </div>
                                         <p class="mt-0.5 text-xs text-slate-500">{{ formatPrice(receiptDisplayTotal(transaction)) }}</p>
                                     </div>
                                 </button>
@@ -728,6 +1080,34 @@ onBeforeUnmount(() => {
                                 </div>
                             </article>
                             <p v-if="openReceipts.length === 0" class="text-sm text-slate-500">No open receipts.</p>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="offlineEnabled && syncQueueReceipts.length > 0"
+                        class="rounded-xl border border-amber-200/80 bg-amber-50/70 p-4"
+                    >
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Offline Sync Queue</h4>
+                        <div class="mt-3 space-y-2">
+                            <article
+                                v-for="receipt in syncQueueReceipts"
+                                :key="receipt.id"
+                                class="flex items-center justify-between gap-3 rounded-lg border border-amber-200/80 bg-white px-3 py-2"
+                            >
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-semibold text-slate-900">{{ receipt.transaction_id || receipt.id }}</p>
+                                    <p class="mt-0.5 text-xs text-slate-500">{{ receiptSyncLabel(receipt) }}</p>
+                                    <p v-if="receipt.sync_error" class="mt-0.5 text-xs text-rose-600">{{ receipt.sync_error }}</p>
+                                </div>
+                                <button
+                                    v-if="receipt.sync_status === 'failed'"
+                                    type="button"
+                                    class="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-200"
+                                    @click="retryFailedSync(receipt.id)"
+                                >
+                                    Retry
+                                </button>
+                            </article>
                         </div>
                     </div>
 
