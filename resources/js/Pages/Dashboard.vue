@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useCartStore } from '@/stores/cart';
 import axios from 'axios';
 
@@ -23,10 +23,36 @@ const manualProductName = ref('');
 const manualPackages = ref(1);
 const manualQuantity = ref(1);
 const manualPrice = ref(0);
+const autocompleteOpen = ref(false);
+const highlightedSuggestionIndex = ref(-1);
+const isManualProductInputFocused = ref(false);
+const manualInputContainerRef = ref(null);
 const productNameInputRef = ref(null);
 const packagesInputRef = ref(null);
 const quantityInputRef = ref(null);
 const priceInputRef = ref(null);
+const manualAutocompleteId = 'manual-product-suggestions';
+
+const normalizeQuery = (value) => String(value || '').trim().toLowerCase();
+
+const manualProductSuggestions = computed(() => {
+    const query = normalizeQuery(manualProductName.value);
+    if (!query) return [];
+
+    return (props.products || [])
+        .filter((product) => {
+            const name = normalizeQuery(product?.name);
+            const shortName = normalizeQuery(product?.short_name);
+            const ean = normalizeQuery(product?.ean);
+
+            return name.includes(query) || shortName.includes(query) || ean.includes(query);
+        })
+        .slice(0, 8);
+});
+
+const showManualAutocomplete = computed(() => {
+    return autocompleteOpen.value && isManualProductInputFocused.value && manualProductSuggestions.value.length > 0;
+});
 
 const filteredProducts = computed(() => {
     if (!searchQuery.value) return props.products;
@@ -48,7 +74,11 @@ const activeReceiptLabel = computed(() => {
 });
 
 const addToCart = (product) => {
-    cart.addItem(product);
+    selectManualProduct(product);
+    manualPackages.value = 1;
+    manualQuantity.value = 1;
+    productNameInputRef.value?.focus();
+    packagesInputRef.value?.focus();
 };
 
 const canAddManualItem = computed(() => {
@@ -71,6 +101,7 @@ const addManualBillItem = () => {
     manualPackages.value = 1;
     manualQuantity.value = 1;
     manualPrice.value = 0;
+    closeManualAutocomplete();
     productNameInputRef.value?.focus();
 };
 
@@ -105,11 +136,107 @@ const productSubtitle = (product) => {
     return product.short_name || '';
 };
 
+const closeManualAutocomplete = () => {
+    autocompleteOpen.value = false;
+    highlightedSuggestionIndex.value = -1;
+};
+
+const openManualAutocomplete = () => {
+    autocompleteOpen.value = true;
+    highlightedSuggestionIndex.value = manualProductSuggestions.value.length > 0 ? 0 : -1;
+};
+
+const selectManualProduct = (product) => {
+    if (!product) return;
+
+    manualProductName.value = product.name || '';
+    manualPrice.value = Number(product.price || 0);
+    closeManualAutocomplete();
+};
+
+const onManualProductInput = () => {
+    autocompleteOpen.value = true;
+    highlightedSuggestionIndex.value = manualProductSuggestions.value.length > 0 ? 0 : -1;
+};
+
+const onManualProductFocus = () => {
+    isManualProductInputFocused.value = true;
+
+    if (manualProductSuggestions.value.length > 0) {
+        openManualAutocomplete();
+    }
+};
+
+const onManualProductBlur = () => {
+    isManualProductInputFocused.value = false;
+    closeManualAutocomplete();
+};
+
+const onManualProductKeydown = (event) => {
+    if (event.key === 'Tab') {
+        closeManualAutocomplete();
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        closeManualAutocomplete();
+        return;
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+
+        if (!autocompleteOpen.value) {
+            openManualAutocomplete();
+            return;
+        }
+
+        const maxIndex = manualProductSuggestions.value.length - 1;
+        if (maxIndex < 0) return;
+        highlightedSuggestionIndex.value = Math.min(highlightedSuggestionIndex.value + 1, maxIndex);
+        return;
+    }
+
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
+
+        if (!autocompleteOpen.value) {
+            openManualAutocomplete();
+            return;
+        }
+
+        if (manualProductSuggestions.value.length === 0) return;
+        highlightedSuggestionIndex.value = Math.max(highlightedSuggestionIndex.value - 1, 0);
+        return;
+    }
+
+    if (event.key === 'Enter') {
+        const hasHighlightedSuggestion = showManualAutocomplete.value
+            && highlightedSuggestionIndex.value >= 0
+            && highlightedSuggestionIndex.value < manualProductSuggestions.value.length;
+
+        if (hasHighlightedSuggestion) {
+            event.preventDefault();
+            selectManualProduct(manualProductSuggestions.value[highlightedSuggestionIndex.value]);
+            return;
+        }
+
+        event.preventDefault();
+        focusPackagesInput();
+    }
+};
+
 const customerDisplayName = (customer) => {
     if (!customer) return 'No customer selected';
 
     const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
     return fullName || customer.company_name || 'No customer selected';
+};
+
+const handleDocumentClick = (event) => {
+    if (!manualInputContainerRef.value?.contains(event.target)) {
+        closeManualAutocomplete();
+    }
 };
 
 const createNewTransaction = async () => {
@@ -206,6 +333,12 @@ onMounted(() => {
     if (openReceipts.value.length > 0 && !cart.currentTransaction) {
         cart.setTransaction(openReceipts.value[0]);
     }
+
+    document.addEventListener('click', handleDocumentClick);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleDocumentClick);
 });
 </script>
 
@@ -244,16 +377,51 @@ onMounted(() => {
 
                     <div class="flex min-h-0 flex-1 flex-col">
                         <div class="space-y-3 px-4 pt-4">
-                            <div>
+                            <div ref="manualInputContainerRef" class="relative">
                                 <label class="mb-1.5 block text-xs font-medium text-slate-600">Product Name</label>
                                 <input
                                     ref="productNameInputRef"
                                     v-model="manualProductName"
                                     type="text"
                                     placeholder="Product Name"
+                                    role="combobox"
+                                    autocomplete="off"
+                                    :aria-expanded="showManualAutocomplete"
+                                    :aria-controls="manualAutocompleteId"
+                                    :aria-activedescendant="highlightedSuggestionIndex >= 0 ? `manual-product-suggestion-${manualProductSuggestions[highlightedSuggestionIndex]?.id}` : undefined"
                                     class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                                    @keydown.enter.prevent="focusPackagesInput"
+                                    @input="onManualProductInput"
+                                    @focus="onManualProductFocus"
+                                    @blur="onManualProductBlur"
+                                    @keydown="onManualProductKeydown"
                                 />
+
+                                <div
+                                    v-if="showManualAutocomplete"
+                                    :id="manualAutocompleteId"
+                                    role="listbox"
+                                    class="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg"
+                                >
+                                    <button
+                                        v-for="(product, suggestionIndex) in manualProductSuggestions"
+                                        :id="`manual-product-suggestion-${product.id}`"
+                                        :key="product.id"
+                                        type="button"
+                                        role="option"
+                                        :aria-selected="highlightedSuggestionIndex === suggestionIndex"
+                                        class="flex w-full items-start justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left last:border-b-0"
+                                        :class="highlightedSuggestionIndex === suggestionIndex ? 'bg-teal-50' : 'bg-white hover:bg-slate-50'"
+                                        @mousedown.prevent="selectManualProduct(product)"
+                                        @mousemove="highlightedSuggestionIndex = suggestionIndex"
+                                    >
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-medium text-slate-900">{{ product.name }}</p>
+                                            <p v-if="product.short_name" class="truncate text-xs text-slate-500">{{ product.short_name }}</p>
+                                            <p v-if="product.ean" class="truncate text-xs font-mono text-slate-500">{{ product.ean }}</p>
+                                        </div>
+                                        <p class="shrink-0 text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">

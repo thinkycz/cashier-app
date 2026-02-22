@@ -73,6 +73,11 @@ class DashboardReceiptsTest extends TestCase
                 ->where('openTransactions.0.id', $ownOpenTransaction->id)
                 ->has('products', 1)
                 ->where('products.0.id', $ownProduct->id)
+                ->where('products.0.name', 'Own Product')
+                ->where('products.0.short_name', null)
+                ->where('products.0.ean', null)
+                ->where('products.0.price', '100.00')
+                ->where('products.0.vat_rate', '21.00')
                 ->has('customers', 1)
                 ->where('customers.0.id', $ownCustomer->id)
             );
