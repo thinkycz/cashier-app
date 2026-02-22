@@ -15,6 +15,9 @@ class Transaction extends Model
         'customer_id',
         'subtotal',
         'discount',
+        'adjustment_type',
+        'adjustment_percent',
+        'adjustment_amount',
         'total',
         'status',
         'notes',
@@ -23,6 +26,8 @@ class Transaction extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
+        'adjustment_percent' => 'decimal:2',
+        'adjustment_amount' => 'decimal:2',
         'total' => 'decimal:2',
     ];
 

@@ -156,14 +156,16 @@ class DashboardReceiptsTest extends TestCase
             ->patchJson(route('dashboard.receipts.checkout', $transaction), [
                 'checkout_method' => 'cash',
                 'subtotal' => 1,
-                'discount' => 5,
                 'total' => 1,
+                'adjustment_type' => 'discount',
+                'adjustment_percent' => 5,
                 'items' => [
                     [
                         'product_id' => $product->id,
                         'product_name' => $product->name,
                         'packages' => 2,
                         'quantity' => 3,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 1,
@@ -173,6 +175,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => 'Custom line',
                         'packages' => 4,
                         'quantity' => 2,
+                        'base_unit_price' => 5,
                         'unit_price' => 5,
                         'vat_rate' => 0,
                         'total' => 1,
@@ -182,8 +185,12 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('transaction.subtotal', '100.00')
+            ->assertJsonPath('transaction.subtotal', '95.00')
             ->assertJsonPath('transaction.total', '95.00')
+            ->assertJsonPath('transaction.discount', '5.00')
+            ->assertJsonPath('transaction.adjustment_type', 'discount')
+            ->assertJsonPath('transaction.adjustment_percent', '5.00')
+            ->assertJsonPath('transaction.adjustment_amount', '5.00')
             ->assertJsonPath('transaction.transaction_items.0.packages', 2)
             ->assertJsonPath('transaction.transaction_items.1.packages', 4)
             ->assertJson(fn ($json) => $json
@@ -195,8 +202,12 @@ class DashboardReceiptsTest extends TestCase
         $transaction->refresh();
 
         $this->assertSame('cash', $transaction->status);
-        $this->assertSame('100.00', $transaction->subtotal);
+        $this->assertSame('95.00', $transaction->subtotal);
         $this->assertSame('95.00', $transaction->total);
+        $this->assertSame('discount', $transaction->adjustment_type);
+        $this->assertSame('5.00', $transaction->adjustment_percent);
+        $this->assertSame('5.00', $transaction->adjustment_amount);
+        $this->assertSame('5.00', $transaction->discount);
 
         $items = DB::table('transaction_items')
             ->where('transaction_id', $transaction->id)
@@ -207,19 +218,96 @@ class DashboardReceiptsTest extends TestCase
 
         $this->assertSame(2, $items[0]->packages);
         $this->assertSame(3, $items[0]->quantity);
-        $this->assertSame('10', (string) $items[0]->unit_price);
-        $this->assertSame('60', (string) $items[0]->total);
+        $this->assertSame('9.5', (string) $items[0]->unit_price);
+        $this->assertSame('57', (string) $items[0]->total);
 
         $this->assertSame(4, $items[1]->packages);
         $this->assertSame(2, $items[1]->quantity);
-        $this->assertSame('5', (string) $items[1]->unit_price);
-        $this->assertSame('40', (string) $items[1]->total);
+        $this->assertSame('4.75', (string) $items[1]->unit_price);
+        $this->assertSame('38', (string) $items[1]->total);
 
         $this->assertDatabaseHas('products', [
             'name' => 'Custom line',
             'user_id' => $user->id,
-            'is_active' => 0,
+            'price' => 5,
+            'is_active' => 1,
         ]);
+    }
+
+    public function test_checkout_applies_surcharge_percentage_and_does_not_fill_legacy_discount(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createProduct($user, ['price' => 10]);
+        $transaction = $this->createTransaction($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'card',
+                'adjustment_type' => 'surcharge',
+                'adjustment_percent' => 10,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'packages' => 1,
+                        'quantity' => 2,
+                        'base_unit_price' => 10,
+                        'unit_price' => 10,
+                        'vat_rate' => 21,
+                        'total' => 20,
+                    ],
+                ],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('transaction.subtotal', '22.00')
+            ->assertJsonPath('transaction.total', '22.00')
+            ->assertJsonPath('transaction.discount', '0.00')
+            ->assertJsonPath('transaction.adjustment_type', 'surcharge')
+            ->assertJsonPath('transaction.adjustment_percent', '10.00')
+            ->assertJsonPath('transaction.adjustment_amount', '2.00');
+    }
+
+    public function test_checkout_ignores_client_unit_price_and_total_and_recomputes_from_base_price(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->createProduct($user, ['price' => 100]);
+        $transaction = $this->createTransaction($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('dashboard.receipts.checkout', $transaction), [
+                'checkout_method' => 'cash',
+                'adjustment_type' => 'discount',
+                'adjustment_percent' => 10,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'packages' => 1,
+                        'quantity' => 1,
+                        'base_unit_price' => 100,
+                        'unit_price' => 1,
+                        'vat_rate' => 21,
+                        'total' => 1,
+                    ],
+                ],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('transaction.subtotal', '90.00')
+            ->assertJsonPath('transaction.total', '90.00')
+            ->assertJsonPath('transaction.adjustment_amount', '10.00');
+
+        $item = DB::table('transaction_items')
+            ->where('transaction_id', $transaction->id)
+            ->first(['unit_price', 'total']);
+
+        $this->assertSame('90', (string) $item->unit_price);
+        $this->assertSame('90', (string) $item->total);
     }
 
     public function test_checkout_uses_product_vat_even_if_client_sends_zero(): void
@@ -242,6 +330,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => $product->name,
                         'packages' => 1,
                         'quantity' => 2,
+                        'base_unit_price' => 15,
                         'unit_price' => 15,
                         'vat_rate' => 0,
                         'total' => 30,
@@ -272,6 +361,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => 'Manual line',
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'total' => 10,
                     ],
@@ -301,6 +391,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => 'Reduced VAT line',
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 20,
                         'unit_price' => 20,
                         'vat_rate' => 15,
                         'total' => 20,
@@ -332,6 +423,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => $product->name,
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 10,
@@ -371,6 +463,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => $product->name,
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 10,
@@ -388,7 +481,7 @@ class DashboardReceiptsTest extends TestCase
         $this->assertDatabaseCount('transactions', 2);
     }
 
-    public function test_checkout_rejects_when_discount_exceeds_computed_subtotal(): void
+    public function test_checkout_rejects_when_adjustment_percent_exceeds_100(): void
     {
         $user = User::factory()->create();
         $product = $this->createProduct($user, [
@@ -406,7 +499,8 @@ class DashboardReceiptsTest extends TestCase
             ->patchJson(route('dashboard.receipts.checkout', $transaction), [
                 'checkout_method' => 'card',
                 'subtotal' => 0,
-                'discount' => 100,
+                'adjustment_type' => 'discount',
+                'adjustment_percent' => 101,
                 'total' => 0,
                 'items' => [
                     [
@@ -414,6 +508,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => $product->name,
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 10,
@@ -423,7 +518,7 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Discount cannot exceed subtotal.');
+            ->assertJsonValidationErrors(['adjustment_percent']);
 
         $transaction->refresh();
 
@@ -450,6 +545,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => $foreignProduct->name,
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 10,
@@ -477,6 +573,7 @@ class DashboardReceiptsTest extends TestCase
                         'product_name' => 'Own line',
                         'packages' => 1,
                         'quantity' => 1,
+                        'base_unit_price' => 10,
                         'unit_price' => 10,
                         'vat_rate' => 21,
                         'total' => 10,

@@ -72,6 +72,30 @@ class BillPagesTest extends TestCase
             );
     }
 
+    public function test_bills_show_includes_adjustment_fields_when_present(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, [
+            'status' => 'cash',
+            'adjustment_type' => 'discount',
+            'adjustment_percent' => 10,
+            'adjustment_amount' => 2,
+            'discount' => 2,
+            'subtotal' => 18,
+            'total' => 18,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('bills.show', $transaction))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Show')
+                ->where('bill.adjustment_type', 'discount')
+                ->where('bill.adjustment_percent', '10.00')
+                ->where('bill.adjustment_amount', '2.00')
+            );
+    }
+
     public function test_user_gets_404_for_another_users_bill_show_route(): void
     {
         $user = User::factory()->create();

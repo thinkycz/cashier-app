@@ -38,11 +38,35 @@ const billSubtotalExcludingVat = () => {
     }, 0);
 };
 
+const adjustmentType = () => {
+    const type = props.bill?.adjustment_type;
+    return type === 'discount' || type === 'surcharge' ? type : null;
+};
+
+const adjustmentPercent = () => {
+    return Number(props.bill?.adjustment_percent || 0);
+};
+
+const adjustmentAmount = () => {
+    const type = adjustmentType();
+
+    if (type) {
+        return Number(props.bill?.adjustment_amount || 0);
+    }
+
+    return Number(props.bill?.discount || 0);
+};
+
 const billTotalExcludingVat = () => {
     const subtotalExclVat = billSubtotalExcludingVat();
-    const discount = Number(props.bill?.discount || 0);
+    const type = adjustmentType();
 
-    return Math.max(0, subtotalExclVat - discount);
+    if (!type && Number(props.bill?.discount || 0) > 0) {
+        const discount = Number(props.bill?.discount || 0);
+        return Math.max(0, subtotalExclVat - discount);
+    }
+
+    return subtotalExclVat;
 };
 
 const formatDate = (date) => {
@@ -72,6 +96,16 @@ const getStatusColor = (status) => {
 
 const printBill = () => {
     window.print();
+};
+
+const adjustmentLabel = () => {
+    const type = adjustmentType();
+
+    if (!type) {
+        return Number(props.bill?.discount || 0) > 0 ? 'Legacy discount' : 'Adjustment';
+    }
+
+    return type === 'discount' ? 'Discount' : 'Surcharge';
 };
 </script>
 
@@ -308,9 +342,21 @@ const printBill = () => {
                                 </dd>
                             </div>
                             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                                <dt class="text-slate-500">Discount</dt>
-                                <dd :class="bill.discount > 0 ? 'text-rose-600' : 'text-slate-900'" class="font-medium">
-                                    {{ bill.discount > 0 ? `-${formatPrice(bill.discount)}` : formatPrice(0) }}
+                                <dt class="text-slate-500">{{ adjustmentLabel() }}</dt>
+                                <dd
+                                    class="text-right font-medium"
+                                    :class="adjustmentType() === 'discount' || (!adjustmentType() && bill.discount > 0) ? 'text-rose-600' : adjustmentType() === 'surcharge' ? 'text-amber-700' : 'text-slate-900'"
+                                >
+                                    <p>
+                                        {{ adjustmentType() === 'discount' || (!adjustmentType() && bill.discount > 0)
+                                            ? `-${formatPrice(adjustmentAmount())}`
+                                            : adjustmentType() === 'surcharge'
+                                                ? `+${formatPrice(adjustmentAmount())}`
+                                                : formatPrice(0) }}
+                                    </p>
+                                    <p v-if="adjustmentType()" class="mt-0.5 text-xs text-slate-500">
+                                        {{ Number(adjustmentPercent() || 0).toFixed(2) }}%
+                                    </p>
                                 </dd>
                             </div>
                             <div class="flex items-center justify-between pt-1">

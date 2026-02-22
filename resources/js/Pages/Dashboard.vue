@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Dropdown from '@/Components/Dropdown.vue';
+import Modal from '@/Components/Modal.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useCartStore } from '@/stores/cart';
@@ -34,6 +35,9 @@ const packagesInputRef = ref(null);
 const quantityInputRef = ref(null);
 const priceInputRef = ref(null);
 const manualAutocompleteId = 'manual-product-suggestions';
+const showAdjustmentModal = ref(false);
+const adjustmentFormType = ref('discount');
+const adjustmentFormPercent = ref(0);
 
 const normalizeQuery = (value) => String(value || '').trim().toLowerCase();
 
@@ -73,6 +77,19 @@ const cartItemsNewestFirst = computed(() => {
 
 const activeReceiptLabel = computed(() => {
     return cart.currentTransaction?.transaction_id || 'No active receipt';
+});
+
+const hasActiveAdjustment = computed(() => {
+    return Boolean(cart.adjustment.type) && Number(cart.adjustment.percent || 0) > 0;
+});
+
+const adjustmentChipText = computed(() => {
+    if (!hasActiveAdjustment.value) {
+        return 'No adjustment';
+    }
+
+    const label = cart.adjustment.type === 'discount' ? 'Discount' : 'Surcharge';
+    return `${label} ${formatPercent(cart.adjustment.percent)}`;
 });
 
 const addToCart = (product) => {
@@ -139,8 +156,56 @@ const formatVat = (vatRate) => {
     return Number(vatRate || 0).toFixed(2);
 };
 
+const formatPercent = (percent) => {
+    return `${Number(percent || 0).toFixed(2)}%`;
+};
+
 const productSubtitle = (product) => {
     return product.short_name || '';
+};
+
+const clampPercent = (value) => {
+    const numericValue = Number(value || 0);
+    if (Number.isNaN(numericValue)) {
+        return 0;
+    }
+
+    return Math.min(100, Math.max(0, Math.round((numericValue + Number.EPSILON) * 100) / 100));
+};
+
+const openAdjustmentDialog = () => {
+    const activeType = cart.adjustment.type || 'discount';
+    const activePercent = clampPercent(cart.adjustment.percent || 0);
+
+    adjustmentFormType.value = activeType;
+    adjustmentFormPercent.value = activePercent;
+    showAdjustmentModal.value = true;
+};
+
+const closeAdjustmentDialog = () => {
+    showAdjustmentModal.value = false;
+};
+
+const applyAdjustment = () => {
+    const normalizedPercent = clampPercent(adjustmentFormPercent.value);
+    adjustmentFormPercent.value = normalizedPercent;
+
+    if (normalizedPercent <= 0) {
+        cart.clearAdjustment();
+    } else {
+        cart.setAdjustment({
+            type: adjustmentFormType.value,
+            percent: normalizedPercent,
+        });
+    }
+
+    closeAdjustmentDialog();
+};
+
+const clearAdjustment = () => {
+    cart.clearAdjustment();
+    adjustmentFormPercent.value = 0;
+    closeAdjustmentDialog();
 };
 
 const closeManualAutocomplete = () => {
@@ -290,8 +355,9 @@ const checkoutReceipt = async (checkoutMethod) => {
         const { data } = await axios.patch(route('dashboard.receipts.checkout', activeTransaction.id), {
             checkout_method: checkoutMethod,
             subtotal: cart.subtotal,
-            discount: Number(activeTransaction.discount || 0),
             total: cart.total,
+            adjustment_type: activeTransaction.adjustment_type || null,
+            adjustment_percent: Number(activeTransaction.adjustment_percent || 0),
             items: cart.items.map((item) => {
                 const parsedProductId = Number(item.product_id ?? item.product?.id);
                 const productId = Number.isInteger(parsedProductId) && parsedProductId > 0 ? parsedProductId : null;
@@ -301,6 +367,7 @@ const checkoutReceipt = async (checkoutMethod) => {
                     product_name: item.product?.name || 'Unknown product',
                     packages: Number(item.packages || 1),
                     quantity: Number(item.quantity || 0),
+                    base_unit_price: Number(item.base_unit_price || item.unit_price || 0),
                     unit_price: Number(item.unit_price || 0),
                     vat_rate: Number(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
                     total: Number(item.total || 0),
@@ -320,6 +387,10 @@ const setActiveReceipt = (transaction) => {
 
 const isActiveReceipt = (transaction) => {
     return cart.currentTransaction?.id === transaction.id;
+};
+
+const receiptDisplayTotal = (transaction) => {
+    return cart.getReceiptTotal(transaction);
 };
 
 const syncOpenReceiptsFromResponse = (data) => {
@@ -373,7 +444,14 @@ onBeforeUnmount(() => {
                     <p class="mt-1 text-sm text-slate-600">{{ customerDisplayName(cart.selectedCustomer) }}</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-                    <button type="button" class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70">Discount / Surcharge</button>
+                    <button
+                        type="button"
+                        :disabled="!cart.currentTransaction"
+                        class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="openAdjustmentDialog"
+                    >
+                        Discount / Surcharge
+                    </button>
                     <button type="button" class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70">Select Customer</button>
                     <button
                         type="button"
@@ -393,6 +471,12 @@ onBeforeUnmount(() => {
                     <div class="bg-gradient-to-r from-teal-700 to-cyan-700 px-5 py-4 text-white">
                         <p class="text-xs uppercase tracking-wide text-cyan-100">Current Total</p>
                         <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
+                        <p
+                            class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                            :class="hasActiveAdjustment ? (cart.adjustment.type === 'discount' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800') : 'bg-cyan-100/30 text-cyan-100'"
+                        >
+                            {{ adjustmentChipText }}
+                        </p>
                     </div>
 
                     <div class="flex min-h-0 flex-1 flex-col">
@@ -468,7 +552,7 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Manual Price</label>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Base Price</label>
                                     <input
                                         ref="priceInputRef"
                                         v-model.number="manualPrice"
@@ -530,6 +614,12 @@ onBeforeUnmount(() => {
                                     <div>
                                         <p class="text-slate-500">Unit</p>
                                         <p class="mt-1 font-medium text-slate-900">{{ formatPrice(item.unit_price) }}</p>
+                                        <p
+                                            v-if="hasActiveAdjustment"
+                                            class="mt-0.5 text-[11px] text-slate-500"
+                                        >
+                                            Base {{ formatPrice(item.base_unit_price) }}
+                                        </p>
                                     </div>
                                 </div>
                             </article>
@@ -598,7 +688,7 @@ onBeforeUnmount(() => {
                                     </div>
                                     <div class="min-w-0 py-3">
                                         <p class="truncate text-sm font-semibold text-slate-900">{{ transaction.transaction_id }}</p>
-                                        <p class="mt-0.5 text-xs text-slate-500">{{ formatPrice(transaction.total) }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-500">{{ formatPrice(receiptDisplayTotal(transaction)) }}</p>
                                     </div>
                                 </button>
 
@@ -754,5 +844,55 @@ onBeforeUnmount(() => {
                 </section>
             </div>
         </div>
+
+        <Modal :show="showAdjustmentModal" @close="closeAdjustmentDialog">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-slate-900">Discount / Surcharge</h3>
+                <p class="mt-1 text-sm text-slate-500">Set one percentage adjustment for this receipt. Item prices are recalculated dynamically.</p>
+
+                <div class="mt-5 space-y-4">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Adjustment type</label>
+                        <select
+                            v-model="adjustmentFormType"
+                            class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                        >
+                            <option value="discount">Discount</option>
+                            <option value="surcharge">Surcharge</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Percentage</label>
+                        <input
+                            v-model.number="adjustmentFormPercent"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            @blur="adjustmentFormPercent = clampPercent(adjustmentFormPercent)"
+                        />
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        @click="clearAdjustment"
+                    >
+                        Clear
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+                        @click="applyAdjustment"
+                    >
+                        Apply
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>

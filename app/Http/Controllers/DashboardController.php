@@ -41,6 +41,9 @@ class DashboardController extends Controller
             'customer_id' => null,
             'subtotal' => 0,
             'discount' => 0,
+            'adjustment_type' => null,
+            'adjustment_percent' => 0,
+            'adjustment_amount' => 0,
             'total' => 0,
             'status' => 'open',
             'notes' => null,
@@ -62,8 +65,9 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'checkout_method' => ['required', 'in:cash,card,order'],
             'subtotal' => ['nullable', 'numeric', 'min:0'],
-            'discount' => ['nullable', 'numeric', 'min:0'],
             'total' => ['nullable', 'numeric', 'min:0'],
+            'adjustment_type' => ['nullable', 'in:discount,surcharge'],
+            'adjustment_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => [
                 'nullable',
@@ -75,6 +79,7 @@ class DashboardController extends Controller
             'items.*.product_name' => ['required', 'string', 'max:255'],
             'items.*.packages' => ['required', 'integer', 'min:1'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.base_unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.vat_rate' => ['nullable', 'numeric', 'min:0'],
             'items.*.total' => ['nullable', 'numeric', 'min:0'],
@@ -86,8 +91,10 @@ class DashboardController extends Controller
             ], 422);
         }
 
-        $discount = round((float) ($validated['discount'] ?? 0), 2);
+        $adjustmentType = $validated['adjustment_type'] ?? null;
+        $adjustmentPercent = $this->roundMoney((float) ($validated['adjustment_percent'] ?? 0));
         $subtotal = 0.0;
+        $baseSubtotal = 0.0;
         $normalizedItems = [];
         $requestedProductIds = collect($validated['items'])
             ->pluck('product_id')
@@ -103,35 +110,48 @@ class DashboardController extends Controller
             $productId = isset($item['product_id']) ? (int) $item['product_id'] : null;
             $packages = (int) $item['packages'];
             $quantity = (int) $item['quantity'];
-            $unitPrice = round((float) $item['unit_price'], 2);
+            $baseUnitPrice = $this->roundMoney((float) $item['base_unit_price']);
+            $unitPrice = $this->applyAdjustmentToUnitPrice($baseUnitPrice, $adjustmentType, $adjustmentPercent);
             $hasVatRate = array_key_exists('vat_rate', $item) && $item['vat_rate'] !== null;
             $vatRate = $productId
-                ? round((float) ($productVatRates[$productId] ?? 0), 2)
-                : round((float) ($hasVatRate ? $item['vat_rate'] : $manualDefaultVatRate), 2);
-            $lineTotal = round($packages * $quantity * $unitPrice, 2);
+                ? $this->roundMoney((float) ($productVatRates[$productId] ?? 0))
+                : $this->roundMoney((float) ($hasVatRate ? $item['vat_rate'] : $manualDefaultVatRate));
+            $baseLineTotal = $this->roundMoney($packages * $quantity * $baseUnitPrice);
+            $lineTotal = $this->roundMoney($packages * $quantity * $unitPrice);
 
             $normalizedItems[] = [
                 'product_id' => $productId,
                 'product_name' => $item['product_name'],
                 'packages' => $packages,
                 'quantity' => $quantity,
+                'base_unit_price' => $baseUnitPrice,
                 'unit_price' => $unitPrice,
                 'vat_rate' => $vatRate,
                 'total' => $lineTotal,
             ];
 
-            $subtotal = round($subtotal + $lineTotal, 2);
+            $baseSubtotal = $this->roundMoney($baseSubtotal + $baseLineTotal);
+            $subtotal = $this->roundMoney($subtotal + $lineTotal);
         }
 
-        $total = round($subtotal - $discount, 2);
+        $adjustmentAmount = $adjustmentType
+            ? $this->roundMoney($baseSubtotal * ($adjustmentPercent / 100))
+            : 0.0;
+        $legacyDiscount = $adjustmentType === 'discount' ? $adjustmentAmount : 0.0;
+        $total = $subtotal;
 
-        if ($total < 0) {
-            return response()->json([
-                'message' => 'Discount cannot exceed subtotal.',
-            ], 422);
-        }
-
-        DB::transaction(function () use ($request, $transaction, $validated, $normalizedItems, $subtotal, $discount, $total) {
+        DB::transaction(function () use (
+            $request,
+            $transaction,
+            $validated,
+            $normalizedItems,
+            $subtotal,
+            $legacyDiscount,
+            $adjustmentType,
+            $adjustmentPercent,
+            $adjustmentAmount,
+            $total
+        ) {
             $transaction->transactionItems()->delete();
 
             foreach ($normalizedItems as $item) {
@@ -143,7 +163,7 @@ class DashboardController extends Controller
                         'name' => $item['product_name'],
                         'ean' => null,
                         'vat_rate' => $item['vat_rate'] ?? 0,
-                        'price' => $item['unit_price'],
+                        'price' => $item['base_unit_price'],
                         'is_active' => true,
                     ]);
 
@@ -162,7 +182,10 @@ class DashboardController extends Controller
 
             $transaction->update([
                 'subtotal' => $subtotal,
-                'discount' => $discount,
+                'discount' => $legacyDiscount,
+                'adjustment_type' => $adjustmentType,
+                'adjustment_percent' => $adjustmentPercent,
+                'adjustment_amount' => $adjustmentAmount,
                 'total' => $total,
                 'status' => $validated['checkout_method'],
             ]);
@@ -216,6 +239,9 @@ class DashboardController extends Controller
             'customer_id' => null,
             'subtotal' => 0,
             'discount' => 0,
+            'adjustment_type' => null,
+            'adjustment_percent' => 0,
+            'adjustment_amount' => 0,
             'total' => 0,
             'status' => 'open',
             'notes' => null,
@@ -229,5 +255,27 @@ class DashboardController extends Controller
             ->with(['customer', 'transactionItems.product'])
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    private function roundMoney(float $amount): float
+    {
+        return round($amount, 2);
+    }
+
+    private function applyAdjustmentToUnitPrice(float $baseUnitPrice, ?string $adjustmentType, float $adjustmentPercent): float
+    {
+        if (!$adjustmentType || $adjustmentPercent <= 0) {
+            return $baseUnitPrice;
+        }
+
+        if ($adjustmentType === 'discount') {
+            return $this->roundMoney($baseUnitPrice * (1 - ($adjustmentPercent / 100)));
+        }
+
+        if ($adjustmentType === 'surcharge') {
+            return $this->roundMoney($baseUnitPrice * (1 + ($adjustmentPercent / 100)));
+        }
+
+        return $baseUnitPrice;
     }
 }
