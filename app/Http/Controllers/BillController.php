@@ -9,11 +9,16 @@ use App\Models\Transaction;
 
 class BillController extends Controller
 {
+    private const ALLOWED_STATUSES = ['open', 'cash', 'card', 'order'];
+    private const DEFAULT_STATUSES = ['cash', 'card', 'order'];
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        $statuses = $this->normalizeStatuses($request);
+
         $query = Transaction::query()
             ->where('user_id', $request->user()->id)
             ->with('customer');
@@ -31,15 +36,20 @@ class BillController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
+        if (count($statuses) > 0) {
+            $query->whereIn('status', $statuses);
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         $transactions = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return Inertia::render('Bills/Index', [
             'transactions' => $transactions,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => [
+                'search' => $request->get('search', ''),
+                'status' => $statuses,
+            ],
         ]);
     }
 
@@ -139,5 +149,28 @@ class BillController extends Controller
         }
 
         return $summary;
+    }
+
+    private function normalizeStatuses(Request $request): array
+    {
+        $statusFilterExists = $request->query->has('status');
+        $rawStatuses = $statusFilterExists ? $request->query('status') : self::DEFAULT_STATUSES;
+
+        if (is_string($rawStatuses)) {
+            $rawStatuses = [$rawStatuses];
+        }
+
+        if (!is_array($rawStatuses)) {
+            return [];
+        }
+
+        return collect($rawStatuses)
+            ->filter(fn ($status) => is_string($status))
+            ->map(fn (string $status) => trim($status))
+            ->filter(fn (string $status) => $status !== '')
+            ->filter(fn (string $status) => in_array($status, self::ALLOWED_STATUSES, true))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

@@ -46,6 +46,7 @@ class BillPagesTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Bills/Index')
+                ->where('filters.status', ['cash', 'card', 'order'])
                 ->has('transactions.data', 1)
                 ->where('transactions.data.0.id', $ownTransaction->id)
             );
@@ -89,7 +90,102 @@ class BillPagesTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Bills/Index')
-                ->where('filters.status', 'cash')
+                ->where('filters.status', ['cash'])
+                ->has('transactions.data', 1)
+                ->where('transactions.data.0.id', $cashTransaction->id)
+                ->where('transactions.data.0.status', 'cash')
+            );
+    }
+
+    public function test_bills_index_defaults_to_non_open_statuses_when_filter_is_missing(): void
+    {
+        $user = User::factory()->create();
+
+        $this->createTransaction($user, ['status' => 'cash']);
+        $this->createTransaction($user, ['status' => 'card']);
+        $this->createTransaction($user, ['status' => 'order']);
+        $this->createTransaction($user, ['status' => 'open']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('bills.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Index')
+                ->where('filters.status', ['cash', 'card', 'order'])
+                ->has('transactions.data', 3)
+                ->where('transactions.data', function ($transactions) {
+                    $statuses = collect($transactions)->pluck('status')->sort()->values()->all();
+
+                    return $statuses === ['card', 'cash', 'order'];
+                })
+            );
+    }
+
+    public function test_bills_index_can_filter_by_multiple_statuses(): void
+    {
+        $user = User::factory()->create();
+
+        $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
+        $cardTransaction = $this->createTransaction($user, ['status' => 'card']);
+        $this->createTransaction($user, ['status' => 'open']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('bills.index', ['status' => ['cash', 'card']]));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Index')
+                ->where('filters.status', ['cash', 'card'])
+                ->has('transactions.data', 2)
+                ->where('transactions.data', function ($transactions) use ($cashTransaction, $cardTransaction) {
+                    $ids = collect($transactions)->pluck('id')->sort()->values()->all();
+
+                    return $ids === collect([$cashTransaction->id, $cardTransaction->id])->sort()->values()->all();
+                })
+            );
+    }
+
+    public function test_bills_index_returns_no_results_for_explicit_empty_status_selection(): void
+    {
+        $user = User::factory()->create();
+
+        $this->createTransaction($user, ['status' => 'cash']);
+        $this->createTransaction($user, ['status' => 'open']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('bills.index') . '?status[]=');
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Index')
+                ->where('filters.status', [])
+                ->has('transactions.data', 0)
+            );
+    }
+
+    public function test_bills_index_ignores_invalid_status_values(): void
+    {
+        $user = User::factory()->create();
+
+        $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
+        $this->createTransaction($user, ['status' => 'card']);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('bills.index', ['status' => ['cash', 'invalid']]));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Bills/Index')
+                ->where('filters.status', ['cash'])
                 ->has('transactions.data', 1)
                 ->where('transactions.data.0.id', $cashTransaction->id)
                 ->where('transactions.data.0.status', 'cash')

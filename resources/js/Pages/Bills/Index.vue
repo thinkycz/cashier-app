@@ -1,6 +1,5 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import SelectInput from '@/Components/SelectInput.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
@@ -10,6 +9,58 @@ const props = defineProps({
     filters: Object,
 });
 
+const statusOptions = [
+    {
+        value: 'open',
+        label: 'Open',
+        activeClasses: 'border-amber-300 bg-amber-50 text-amber-800',
+        inactiveClasses: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+        dotClasses: 'bg-amber-500',
+    },
+    {
+        value: 'cash',
+        label: 'Cash',
+        activeClasses: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+        inactiveClasses: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+        dotClasses: 'bg-emerald-500',
+    },
+    {
+        value: 'card',
+        label: 'Card',
+        activeClasses: 'border-cyan-300 bg-cyan-50 text-cyan-800',
+        inactiveClasses: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+        dotClasses: 'bg-cyan-500',
+    },
+    {
+        value: 'order',
+        label: 'Order',
+        activeClasses: 'border-sky-300 bg-sky-50 text-sky-800',
+        inactiveClasses: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+        dotClasses: 'bg-sky-500',
+    },
+];
+
+const defaultStatuses = ['cash', 'card', 'order'];
+
+const normalizeStatuses = (rawStatuses) => {
+    const allowedValues = statusOptions.map((option) => option.value);
+
+    if (Array.isArray(rawStatuses)) {
+        return [...new Set(
+            rawStatuses
+                .filter((status) => typeof status === 'string')
+                .map((status) => status.trim())
+                .filter((status) => allowedValues.includes(status)),
+        )];
+    }
+
+    if (typeof rawStatuses === 'string' && allowedValues.includes(rawStatuses.trim())) {
+        return [rawStatuses.trim()];
+    }
+
+    return [];
+};
+
 const customerDisplayName = (customer) => {
     if (!customer) return 'No customer';
 
@@ -18,17 +69,19 @@ const customerDisplayName = (customer) => {
 };
 
 const search = ref(props.filters?.search || '');
-const status = ref(props.filters?.status || '');
+const statuses = ref(normalizeStatuses(props.filters?.status));
 
-watch([search, status], ([searchValue, statusValue]) => {
+watch([search, statuses], ([searchValue, statusValues]) => {
+    const queryStatuses = statusValues.length > 0 ? statusValues : [''];
+
     router.get(route('bills.index'), {
         search: searchValue,
-        status: statusValue,
+        status: queryStatuses,
     }, {
         preserveState: true,
         replace: true,
     });
-});
+}, { deep: true });
 
 const formatPrice = (price) => {
     return new Intl.NumberFormat('cs-CZ', {
@@ -67,7 +120,30 @@ const getStatusColor = (transactionStatus) => {
     }
 };
 
-const isFiltering = computed(() => Boolean(search.value?.trim()) || Boolean(status.value));
+const toggleStatus = (statusValue) => {
+    if (statuses.value.includes(statusValue)) {
+        statuses.value = statuses.value.filter((value) => value !== statusValue);
+        return;
+    }
+
+    statuses.value = [...statuses.value, statusValue];
+};
+
+const isStatusSelected = (statusValue) => statuses.value.includes(statusValue);
+
+const areStatusSelectionsEqual = (left, right) => {
+    if (left.length !== right.length) {
+        return false;
+    }
+
+    const sortedLeft = [...left].sort();
+    const sortedRight = [...right].sort();
+
+    return sortedLeft.every((status, index) => status === sortedRight[index]);
+};
+
+const isDefaultStatusSelection = computed(() => areStatusSelectionsEqual(statuses.value, defaultStatuses));
+const isFiltering = computed(() => Boolean(search.value?.trim()) || !isDefaultStatusSelection.value);
 const isEmpty = computed(() => props.transactions.data.length === 0);
 </script>
 
@@ -94,17 +170,23 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             class="h-10 pl-10 pr-3 text-sm"
                         />
                     </div>
-                    <SelectInput
-                        id="bill-status"
-                        v-model="status"
-                        class="h-10 px-4 pr-10 text-sm font-medium sm:w-36"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="open">Open</option>
-                        <option value="cash">Cash</option>
-                        <option value="card">Card</option>
-                        <option value="order">Order</option>
-                    </SelectInput>
+                    <div id="bill-status" class="flex flex-wrap items-center gap-2">
+                        <button
+                            v-for="option in statusOptions"
+                            :key="option.value"
+                            type="button"
+                            :title="option.label"
+                            :aria-label="option.label"
+                            :aria-pressed="isStatusSelected(option.value)"
+                            :class="[
+                                'inline-flex h-10 w-12 items-center justify-center rounded-md border transition-colors',
+                                isStatusSelected(option.value) ? option.activeClasses : option.inactiveClasses,
+                            ]"
+                            @click="toggleStatus(option.value)"
+                        >
+                            <span :class="['h-2 w-2 rounded-full', option.dotClasses]"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </template>
@@ -120,7 +202,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             {{ isFiltering ? 'No matching bills' : 'No bills yet' }}
                         </h3>
                         <p class="mt-1 text-sm text-slate-500">
-                            {{ isFiltering ? 'Try a different search or status filter.' : 'Bills will appear here once transactions are created.' }}
+                            {{ isFiltering ? 'Try a different search or status selection.' : 'Bills will appear here once transactions are created.' }}
                         </p>
                     </div>
 
