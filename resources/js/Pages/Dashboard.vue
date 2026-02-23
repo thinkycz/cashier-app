@@ -72,6 +72,16 @@ const selectedCheckoutMethod = ref(null);
 const checkoutPaidAmount = ref(0);
 const checkoutModalError = ref('');
 const checkoutInfoMessage = ref('');
+const showEditItemModal = ref(false);
+const editingItemKey = ref(null);
+const editItemError = ref('');
+const editItemForm = ref({
+    name: '',
+    vatRate: DEFAULT_MANUAL_VAT_RATE,
+    packages: 1,
+    quantity: 1,
+    basePrice: 0,
+});
 const cashPaidInputRef = ref(null);
 const checkoutConfirmButtonRef = ref(null);
 const showBillPreviewModal = ref(false);
@@ -222,6 +232,102 @@ const addManualBillItem = () => {
     selectedManualProduct.value = null;
     closeManualAutocomplete();
     productNameInputRef.value?.focus();
+};
+
+const clampPositiveInteger = (value) => {
+    return Math.max(1, Math.round(Number(value) || 1));
+};
+
+const clampNonNegativeDecimal = (value) => {
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue)) {
+        return 0;
+    }
+
+    return Math.max(0, Math.round((numericValue + Number.EPSILON) * 100) / 100);
+};
+
+const resetEditItemForm = () => {
+    editItemForm.value = {
+        name: '',
+        vatRate: DEFAULT_MANUAL_VAT_RATE,
+        packages: 1,
+        quantity: 1,
+        basePrice: 0,
+    };
+};
+
+const closeEditItemModal = () => {
+    showEditItemModal.value = false;
+    editingItemKey.value = null;
+    editItemError.value = '';
+    resetEditItemForm();
+};
+
+const openEditItemModal = (item) => {
+    const itemKey = item?.line_id || item?.product?.id || null;
+    if (!itemKey) {
+        return;
+    }
+
+    editingItemKey.value = itemKey;
+    editItemError.value = '';
+    editItemForm.value = {
+        name: String(item.product?.name || '').trim() || 'Unknown product',
+        vatRate: clampNonNegativeDecimal(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
+        packages: clampPositiveInteger(item.packages),
+        quantity: clampPositiveInteger(item.quantity),
+        basePrice: clampNonNegativeDecimal(item.base_unit_price ?? item.unit_price ?? 0),
+    };
+    showEditItemModal.value = true;
+};
+
+const applyEditItem = () => {
+    if (!editingItemKey.value) {
+        editItemError.value = 'Polozka nebyla nalezena.';
+        return;
+    }
+
+    const normalizedName = String(editItemForm.value.name || '').trim();
+    if (!normalizedName) {
+        editItemError.value = 'Nazev polozky je povinny.';
+        return;
+    }
+
+    const normalizedPackages = clampPositiveInteger(editItemForm.value.packages);
+    const normalizedQuantity = clampPositiveInteger(editItemForm.value.quantity);
+    const normalizedBasePrice = clampNonNegativeDecimal(editItemForm.value.basePrice);
+    const normalizedVatRate = clampNonNegativeDecimal(editItemForm.value.vatRate);
+
+    editItemForm.value.packages = normalizedPackages;
+    editItemForm.value.quantity = normalizedQuantity;
+    editItemForm.value.basePrice = normalizedBasePrice;
+    editItemForm.value.vatRate = normalizedVatRate;
+    editItemError.value = '';
+
+    const wasUpdated = cart.updateItem(editingItemKey.value, {
+        product_name: normalizedName,
+        packages: normalizedPackages,
+        quantity: normalizedQuantity,
+        base_unit_price: normalizedBasePrice,
+        vat_rate: normalizedVatRate,
+    });
+
+    if (!wasUpdated) {
+        editItemError.value = 'Polozku se nepodarilo upravit.';
+        return;
+    }
+
+    closeEditItemModal();
+};
+
+const deleteEditedItem = () => {
+    if (!editingItemKey.value) {
+        return;
+    }
+
+    cart.removeItem(editingItemKey.value);
+    closeEditItemModal();
 };
 
 const canCheckout = computed(() => {
@@ -1831,7 +1937,20 @@ onBeforeUnmount(() => {
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-sm font-semibold text-slate-900">{{ item.product?.name || 'Unknown product' }}</p>
+                                        <div class="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-300/70"
+                                                title="Upravit polozku"
+                                                aria-label="Upravit polozku"
+                                                @click="openEditItemModal(item)"
+                                            >
+                                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16.862 3.487 3.651 3.651m-2.08-5.223a2.25 2.25 0 0 1 3.182 3.182L7.5 19.211 3 21l1.789-4.5L18.433 1.915Z" />
+                                                </svg>
+                                            </button>
+                                            <p class="text-sm font-semibold text-slate-900">{{ item.product?.name || 'Unknown product' }}</p>
+                                        </div>
                                         <p class="mt-0.5 text-xs text-slate-500">Line #{{ cart.items.length - index }}</p>
                                     </div>
                                     <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
@@ -1857,6 +1976,7 @@ onBeforeUnmount(() => {
                                         </p>
                                     </div>
                                 </div>
+
                             </article>
                         </div>
 
@@ -2155,6 +2275,102 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
+        <Modal :show="showEditItemModal" max-width="2xl" @close="closeEditItemModal">
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Upravit polozku</h3>
+                        <p class="mt-1 text-sm text-slate-500">Upravte detail polozky pro aktivni uctenku.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        @click="closeEditItemModal"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Nazev polozky</label>
+                        <input
+                            v-model="editItemForm.name"
+                            type="text"
+                            class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                        />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Sazba DPH</label>
+                            <input
+                                v-model.number="editItemForm.vatRate"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Cena za MJ</label>
+                            <input
+                                v-model.number="editItemForm.basePrice"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Baliku</label>
+                            <input
+                                v-model.number="editItemForm.packages"
+                                type="number"
+                                min="1"
+                                step="1"
+                                class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Pocet</label>
+                            <input
+                                v-model.number="editItemForm.quantity"
+                                type="number"
+                                min="1"
+                                step="1"
+                                class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
+                    </div>
+
+                    <p v-if="editItemError" class="text-sm font-semibold text-rose-600">{{ editItemError }}</p>
+                </div>
+
+                <div class="mt-6 flex items-center justify-between gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700"
+                        @click="deleteEditedItem"
+                    >
+                        Odstranit polozku
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:from-teal-700 hover:to-cyan-700"
+                        @click="applyEditItem"
+                    >
+                        Upravit polozku
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
         <Modal :show="showCheckoutModal" max-width="2xl" @close="closeCheckoutModal">
             <div class="p-6">
                 <div class="flex items-start justify-between gap-4">
@@ -2420,15 +2636,6 @@ onBeforeUnmount(() => {
                         <h3 class="text-lg font-semibold text-slate-900">Find Customer</h3>
                         <p class="mt-1 text-sm text-slate-500">Select an existing customer or enter an 8-digit IČO to fetch from ARES.</p>
                     </div>
-                    <button
-                        type="button"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                        @click="closeCustomerDialog"
-                    >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                 </div>
 
                 <div ref="customerInputContainerRef" class="relative mt-5">

@@ -164,6 +164,46 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
+    function updateItem(lineId, updates = {}) {
+        const currentItems = getCurrentItems();
+        if (!currentItems) {
+            return false;
+        }
+
+        const item = currentItems.find((entry) => entry.line_id === lineId || entry.product?.id === lineId);
+        if (!item) {
+            return false;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'product_name')) {
+            const productName = String(updates.product_name || '').trim() || 'Unknown product';
+            item.product = {
+                ...(item.product || {}),
+                name: productName,
+            };
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'packages')) {
+            item.packages = Math.max(1, Math.round(Number(updates.packages) || 1));
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'quantity')) {
+            item.quantity = Math.max(1, Math.round(Number(updates.quantity) || 1));
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'base_unit_price')) {
+            item.base_unit_price = Math.max(0, Number(updates.base_unit_price) || 0);
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'vat_rate')) {
+            item.vat_rate = Math.max(0, Number(updates.vat_rate) || 0);
+        }
+
+        recalculateLine(item);
+        persistState();
+        return true;
+    }
+
     function clearCart() {
         itemsByReceipt.value = {};
         currentTransaction.value = null;
@@ -308,6 +348,7 @@ export const useCartStore = defineStore('cart', () => {
         addManualItem,
         removeItem,
         updateQuantity,
+        updateItem,
         clearCart,
         clearTransactionItems,
         getReceiptTotal,
