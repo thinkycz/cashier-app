@@ -235,6 +235,39 @@ defineProps({
                         <h3 class="text-xl font-semibold text-slate-900 mb-2">Bill Management</h3>
                         <p class="text-slate-600">Generate professional invoices and bills with automatic calculations and customer details.</p>
                     </div>
+
+                    <!-- Feature 4 -->
+                    <div class="text-center p-6 bg-white rounded-2xl border border-teal-100 shadow-sm shadow-teal-100/60 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-teal-200/50">
+                        <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-teal-50">
+                            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 014-4h9a5 5 0 010 10H7a4 4 0 01-4-4zm13-8a3 3 0 00-3-3m0 0a3 3 0 00-3 3m3-3v12"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Works Offline</h3>
+                        <p class="text-slate-600">Keep selling even without internet access and sync your work when your connection is back.</p>
+                    </div>
+
+                    <!-- Feature 5 -->
+                    <div class="text-center p-6 bg-white rounded-2xl border border-teal-100 shadow-sm shadow-teal-100/60 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-teal-200/50">
+                        <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-teal-50">
+                            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 8v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8m18 0l-7.5 5L6 8m15 0a2 2 0 00-2-2H5a2 2 0 00-2 2"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">ARES Integration</h3>
+                        <p class="text-slate-600">Automatically fetch company details from ARES to save time and reduce manual entry errors.</p>
+                    </div>
+
+                    <!-- Feature 6 -->
+                    <div class="text-center p-6 bg-white rounded-2xl border border-teal-100 shadow-sm shadow-teal-100/60 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-teal-200/50">
+                        <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-teal-50">
+                            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4m5 5H6a2 2 0 01-2-2V6a2 2 0 012-2h9l5 5v9a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Invoices & Delivery Notes</h3>
+                        <p class="text-slate-600">Create invoices and delivery notes in a few clicks for faster and more professional order processing.</p>
+                    </div>
                 </div>
             </div>
         </div>
