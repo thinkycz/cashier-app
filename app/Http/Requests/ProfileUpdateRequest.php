@@ -14,6 +14,7 @@ class ProfileUpdateRequest extends FormRequest
             'company_name' => $this->normalizeNullableString('company_name'),
             'company_id' => $this->normalizeNullableString('company_id'),
             'vat_id' => $this->normalizeNullableString('vat_id'),
+            'bank_account' => $this->normalizeNullableString('bank_account'),
             'first_name' => $this->normalizeNullableString('first_name'),
             'last_name' => $this->normalizeNullableString('last_name'),
             'phone_number' => $this->normalizeNullableString('phone_number'),
@@ -40,6 +41,7 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class, 'company_id')->ignore($this->user()->id),
             ],
             'vat_id' => ['nullable', 'string', 'max:255'],
+            'bank_account' => ['nullable', 'string', 'max:255'],
             'first_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
             'email' => [

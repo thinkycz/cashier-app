@@ -17,7 +17,7 @@
     <div class="text-xs">
         <div class="flex justify-between pb-4 border-b-2 border-black mb-6">
             <div class="flex flex-col">
-                <p class="text-lg font-semibold">Faktura</p>
+                <p class="text-lg font-semibold">Faktura - daňový doklad</p>
                 <p class="font-semibold">{{ $bill->number }}</p>
             </div>
         </div>
@@ -74,6 +74,10 @@
             <div>
                 <p class="uppercase text-gray-600 mb-4">Údaje dokladu</p>
                 <p>Datum vystavení: {{ $bill->created_at?->format('d.m.Y') }}</p>
+                <p>Datum zdanitelného plnění: {{ $bill->created_at?->format('d.m.Y') }}</p>
+                <p>Datum splatnosti: {{ $bill->created_at?->copy()?->addDays(7)?->format('d.m.Y') }}</p>
+                <p>Číslo účtu: {{ $bill->supplier->bank_account ?: '-' }}</p>
+                <p>Variabilní symbol: {{ isset($bill->id) ? str_pad((string) $bill->id, 10, '0', STR_PAD_LEFT) : '-' }}</p>
             </div>
         </div>
 

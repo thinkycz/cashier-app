@@ -19,7 +19,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-2 grid-rows-2 gap-6 mb-6">
             <div>
                 <p class="uppercase text-gray-600 mb-4">Dodavatel</p>
                 @if($bill->supplier->company_name)
@@ -33,6 +33,12 @@
                 @endif
                 @if($bill->supplier->zip || $bill->supplier->city)
                     <p>{{ trim(($bill->supplier->zip ?? '') . ' ' . ($bill->supplier->city ?? '')) }}</p>
+                @endif
+                @if($bill->supplier->company_id)
+                    <p>IČ: {{ $bill->supplier->company_id }}</p>
+                @endif
+                @if($bill->supplier->vat_id)
+                    <p>DIČ: {{ $bill->supplier->vat_id }}</p>
                 @endif
             </div>
 
@@ -51,9 +57,24 @@
                     @if($bill->customer->zip || $bill->customer->city)
                         <p>{{ trim(($bill->customer->zip ?? '') . ' ' . ($bill->customer->city ?? '')) }}</p>
                     @endif
+                    @if($bill->customer->company_id)
+                        <p>IČ: {{ $bill->customer->company_id }}</p>
+                    @endif
+                    @if($bill->customer->vat_id)
+                        <p>DIČ: {{ $bill->customer->vat_id }}</p>
+                    @endif
                 @else
                     <p class="text-sm font-medium">Bez odběratele</p>
                 @endif
+            </div>
+
+            <div>
+                <p class="uppercase text-gray-600 mb-4">Údaje dokladu</p>
+                <p>Datum vystavení: {{ $bill->created_at?->format('d.m.Y') }}</p>
+                <p>Datum zdanitelného plnění: {{ $bill->created_at?->format('d.m.Y') }}</p>
+                <p>Datum splatnosti: {{ $bill->created_at?->copy()?->addDays(7)?->format('d.m.Y') }}</p>
+                <p>Číslo účtu: {{ $bill->supplier->bank_account ?: '-' }}</p>
+                <p>Variabilní symbol: {{ isset($bill->id) ? str_pad((string) $bill->id, 10, '0', STR_PAD_LEFT) : '-' }}</p>
             </div>
         </div>
 

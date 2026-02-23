@@ -20,6 +20,7 @@ const form = useForm({
     company_name: user.company_name ?? '',
     company_id: user.company_id ?? '',
     vat_id: user.vat_id ?? '',
+    bank_account: user.bank_account ?? '',
     first_name: user.first_name ?? '',
     last_name: user.last_name ?? '',
     email: user.email ?? '',
@@ -85,6 +86,19 @@ const form = useForm({
                 />
 
                 <InputError class="mt-2" :message="form.errors.vat_id" />
+            </div>
+
+            <div>
+                <InputLabel for="bank_account" value="Bank Account" />
+
+                <TextInput
+                    id="bank_account"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.bank_account"
+                />
+
+                <InputError class="mt-2" :message="form.errors.bank_account" />
             </div>
 
             <div class="grid gap-5 sm:grid-cols-2">

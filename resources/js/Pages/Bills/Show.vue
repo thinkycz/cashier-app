@@ -435,7 +435,7 @@ const adjustmentLabel = () => {
             </div>
         </div>
 
-        <Modal :show="showPrintPreviewModal" max-width="2xl" @close="closePrintPreviewModal">
+        <Modal :show="showPrintPreviewModal" max-width="7xl" @close="closePrintPreviewModal">
             <div class="preview-modal-content">
                 <div class="preview-modal-header">
                     <h3 class="text-lg font-semibold text-slate-900">Náhled - {{ currentPreviewLabel }}</h3>
@@ -500,7 +500,7 @@ const adjustmentLabel = () => {
 
 .preview-canvas {
     margin-top: 1rem;
-    height: min(72vh, 860px);
+    height: min(82vh, 1100px);
     border-radius: 0.75rem;
     background: #9aa9bf;
     overflow: hidden;

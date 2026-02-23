@@ -108,6 +108,7 @@ class BillController extends Controller
         $vatSummary = $this->buildVatSummary($billItems);
 
         $billViewData = (object) [
+            'id' => $bill->id,
             'number' => $bill->transaction_id,
             'created_at' => $bill->created_at,
             'total_price' => (float) $bill->total,
@@ -120,6 +121,7 @@ class BillController extends Controller
                 'city' => $supplier?->city,
                 'company_id' => $supplier?->company_id,
                 'vat_id' => $supplier?->vat_id,
+                'bank_account' => $supplier?->bank_account,
             ],
             'customer' => (object) [
                 'company_name' => $bill->customer?->company_name,
