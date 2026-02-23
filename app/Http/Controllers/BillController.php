@@ -11,6 +11,7 @@ class BillController extends Controller
 {
     private const ALLOWED_STATUSES = ['open', 'cash', 'card', 'order'];
     private const DEFAULT_STATUSES = ['cash', 'card', 'order'];
+    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'delivery_note'];
 
     /**
      * Display a listing of the resource.
@@ -70,11 +71,20 @@ class BillController extends Controller
      */
     public function preview(Transaction $bill, Request $request)
     {
-        $bill->load(['transactionItems.product']);
+        $bill->load(['customer', 'transactionItems.product']);
+        $requestedDocumentType = $request->string('document')->toString();
+        $documentType = in_array($requestedDocumentType, self::ALLOWED_DOCUMENTS, true)
+            ? $requestedDocumentType
+            : 'bill';
+
         $supplier = $request->user();
         $supplierFullName = trim(implode(' ', array_filter([
             $supplier?->first_name,
             $supplier?->last_name,
+        ])));
+        $customerFullName = trim(implode(' ', array_filter([
+            $bill->customer?->first_name,
+            $bill->customer?->last_name,
         ])));
 
         $billItems = $bill->transactionItems
@@ -111,9 +121,24 @@ class BillController extends Controller
                 'company_id' => $supplier?->company_id,
                 'vat_id' => $supplier?->vat_id,
             ],
+            'customer' => (object) [
+                'company_name' => $bill->customer?->company_name,
+                'full_name' => $customerFullName !== '' ? $customerFullName : null,
+                'street' => $bill->customer?->street,
+                'zip' => $bill->customer?->zip,
+                'city' => $bill->customer?->city,
+                'company_id' => $bill->customer?->company_id,
+                'vat_id' => $bill->customer?->vat_id,
+                'email' => $bill->customer?->email,
+                'phone_number' => $bill->customer?->phone_number,
+            ],
         ];
 
-        $view = $bill->status === 'order' ? 'bills.quotation' : 'bills.bill';
+        $view = match ($documentType) {
+            'invoice' => 'documents.invoice',
+            'delivery_note' => 'documents.delivery_note',
+            default => $bill->status === 'order' ? 'bills.quotation' : 'bills.bill',
+        };
 
         return view($view, [
             'bill' => $billViewData,

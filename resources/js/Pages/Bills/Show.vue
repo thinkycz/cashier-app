@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     bill: Object,
@@ -10,8 +10,15 @@ const props = defineProps({
 
 const showPrintPreviewModal = ref(false);
 const previewFrameRef = ref(null);
-const previewUrl = route('bills.preview', props.bill.id);
-const embeddedPreviewUrl = `${previewUrl}?embedded=1`;
+const selectedPrintDocument = ref('bill');
+const basePreviewUrl = route('bills.preview', props.bill.id);
+const previewUrl = computed(() => `${basePreviewUrl}?document=${selectedPrintDocument.value}`);
+const embeddedPreviewUrl = computed(() => `${previewUrl.value}&embedded=1`);
+const currentPreviewLabel = computed(() => {
+    if (selectedPrintDocument.value === 'invoice') return 'Invoice';
+    if (selectedPrintDocument.value === 'delivery_note') return 'Delivery Note';
+    return 'Bill';
+});
 
 const customerDisplayName = (customer) => {
     if (!customer) return 'No customer';
@@ -105,7 +112,8 @@ const getStatusColor = (status) => {
     }
 };
 
-const openPrintPreviewModal = () => {
+const openPrintPreviewModal = (documentType = 'bill') => {
+    selectedPrintDocument.value = documentType;
     showPrintPreviewModal.value = true;
 };
 
@@ -113,7 +121,7 @@ const closePrintPreviewModal = () => {
     showPrintPreviewModal.value = false;
 };
 
-const printBill = () => {
+const printPreview = () => {
     const frameWindow = previewFrameRef.value?.contentWindow;
 
     if (frameWindow) {
@@ -123,7 +131,7 @@ const printBill = () => {
 };
 
 const openPreviewInNewWindow = () => {
-    window.open(previewUrl, '_blank', 'noopener');
+    window.open(previewUrl.value, '_blank', 'noopener');
 };
 
 const adjustmentLabel = () => {
@@ -159,13 +167,33 @@ const adjustmentLabel = () => {
                     </Link>
                     <button
                         type="button"
-                        @click="openPrintPreviewModal"
+                        @click="openPrintPreviewModal('bill')"
                         class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
                         </svg>
                         Print Bill
+                    </button>
+                    <button
+                        type="button"
+                        @click="openPrintPreviewModal('invoice')"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-cyan-700"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        Print Invoice
+                    </button>
+                    <button
+                        type="button"
+                        @click="openPrintPreviewModal('delivery_note')"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-slate-800"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4m4 4h8" />
+                        </svg>
+                        Print Delivery Note
                     </button>
                 </div>
             </div>
@@ -410,12 +438,12 @@ const adjustmentLabel = () => {
         <Modal :show="showPrintPreviewModal" max-width="2xl" @close="closePrintPreviewModal">
             <div class="preview-modal-content">
                 <div class="preview-modal-header">
-                    <h3 class="text-lg font-semibold text-slate-900">Náhled</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">Náhled - {{ currentPreviewLabel }}</h3>
                     <div class="flex items-center gap-2">
                         <button
                             type="button"
                             class="no-print inline-flex items-center gap-1.5 rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-teal-200/70 transition-all duration-200 hover:from-teal-700 hover:to-cyan-700"
-                            @click="printBill"
+                            @click="printPreview"
                         >
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
@@ -449,7 +477,7 @@ const adjustmentLabel = () => {
                     <iframe
                         ref="previewFrameRef"
                         :src="embeddedPreviewUrl"
-                        title="Náhled účtenky"
+                        :title="`Náhled ${currentPreviewLabel}`"
                         class="preview-frame"
                     />
                 </div>

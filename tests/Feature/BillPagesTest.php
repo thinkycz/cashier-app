@@ -267,6 +267,43 @@ class BillPagesTest extends TestCase
             ->assertSee('Objednávka', false);
     }
 
+    public function test_bills_preview_can_render_invoice_document_template(): void
+    {
+        $user = User::factory()->create([
+            'company_name' => 'Supplier s.r.o.',
+            'company_id' => '12345678',
+        ]);
+        $customer = $this->createCustomer($user, ['company_name' => 'Buyer a.s.']);
+        $transaction = $this->createTransaction($user, [
+            'status' => 'cash',
+            'customer_id' => $customer->id,
+        ]);
+        $product = $this->createProduct($user);
+        $this->createTransactionItem($transaction, $product);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=invoice');
+
+        $response
+            ->assertOk()
+            ->assertViewIs('documents.invoice')
+            ->assertSee('Faktura', false);
+    }
+
+    public function test_bills_preview_can_render_delivery_note_document_template(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $this->createTransaction($user, ['status' => 'order']);
+        $product = $this->createProduct($user);
+        $this->createTransactionItem($transaction, $product);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=delivery_note');
+
+        $response
+            ->assertOk()
+            ->assertViewIs('documents.delivery_note')
+            ->assertSee('Dodací list', false);
+    }
+
     public function test_user_gets_404_for_another_users_bill_preview_route(): void
     {
         $user = User::factory()->create();
