@@ -830,6 +830,7 @@ const cloneCartItemsPayload = () => {
 
         return {
             line_id: item.line_id,
+            line_number: Number(item.line_number || 0) || null,
             product_id: productId,
             product: item.product ? { ...item.product } : null,
             packages: Number(item.packages || 1),
@@ -1098,7 +1099,7 @@ const normalizeOfflinePreviewReceipt = (receipt) => {
         total: Number(receipt.total || 0),
         items: items.map((item, index) => ({
             id: item.line_id || `${receipt.id}-line-${index + 1}`,
-            order_column: index + 1,
+            order_column: Number(item.line_number || 0) || (index + 1),
             name: item.product?.name || item.product_name || 'Polozka',
             short_name: item.product?.short_name || '',
             packages: Number(item.packages || 1),
@@ -1494,6 +1495,7 @@ const performCheckout = async (checkoutMethod) => {
             adjustment_type: activeTransaction.adjustment_type || null,
             adjustment_percent: Number(activeTransaction.adjustment_percent || 0),
             items: cloneCartItemsPayload().map((item) => ({
+                line_number: item.line_number,
                 product_id: item.product_id,
                 product_name: item.product?.name || 'Unknown product',
                 packages: item.packages,
@@ -1712,6 +1714,7 @@ watch(() => ({
     customerId: cart.selectedCustomer?.id || null,
     itemSignature: JSON.stringify(cart.items.map((item) => ({
         line_id: item.line_id,
+        line_number: item.line_number,
         product_id: item.product_id ?? item.product?.id,
         packages: item.packages,
         quantity: item.quantity,
@@ -1933,27 +1936,23 @@ onBeforeUnmount(() => {
                             <article
                                 v-for="(item, index) in cartItemsNewestFirst"
                                 :key="item.line_id || `${item.product?.id}-${index}`"
-                                class="min-h-24 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70"
+                                class="min-h-24 cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70 transition-colors hover:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                role="button"
+                                tabindex="0"
+                                :aria-label="`Upravit polozku ${item.product?.name || 'Unknown product'}`"
+                                @click="openEditItemModal(item)"
+                                @keydown.enter.prevent="openEditItemModal(item)"
+                                @keydown.space.prevent="openEditItemModal(item)"
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <div class="flex items-center gap-1.5">
-                                            <button
-                                                type="button"
-                                                class="inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-300/70"
-                                                title="Upravit polozku"
-                                                aria-label="Upravit polozku"
-                                                @click="openEditItemModal(item)"
-                                            >
-                                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16.862 3.487 3.651 3.651m-2.08-5.223a2.25 2.25 0 0 1 3.182 3.182L7.5 19.211 3 21l1.789-4.5L18.433 1.915Z" />
-                                                </svg>
-                                            </button>
-                                            <p class="text-sm font-semibold text-slate-900">{{ item.product?.name || 'Unknown product' }}</p>
+                                            <p class="text-sm font-semibold text-slate-900">#{{ item.line_number || (cart.items.length - index) }} - {{ item.product?.name || 'Unknown product' }}</p>
                                         </div>
-                                        <p class="mt-0.5 text-xs text-slate-500">Line #{{ cart.items.length - index }}</p>
                                     </div>
+                                  <div class="flex items-start justify-between gap-1">
                                     <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
+                                  </div>
                                 </div>
 
                                 <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">

@@ -83,6 +83,7 @@ export const useCartStore = defineStore('cart', () => {
         } else {
             const line = {
                 line_id: createLineId('catalog'),
+                line_number: getNextLineNumber(currentItems),
                 product_id: normalizedProductId,
                 product,
                 packages: 1,
@@ -117,6 +118,7 @@ export const useCartStore = defineStore('cart', () => {
 
         const line = {
             line_id: lineId,
+            line_number: getNextLineNumber(currentItems),
             product_id: normalizedProductId,
             product: {
                 id: normalizedProductId ?? lineId,
@@ -226,10 +228,11 @@ export const useCartStore = defineStore('cart', () => {
 
         if (!itemsByReceipt.value[currentReceiptKey.value]) {
             const transactionItems = transaction?.transaction_items || [];
-            itemsByReceipt.value[currentReceiptKey.value] = transactionItems.map((item) => {
+            itemsByReceipt.value[currentReceiptKey.value] = transactionItems.map((item, index) => {
                 const productId = normalizeProductId(item.product_id ?? item.product?.id);
                 const normalizedLine = {
                     line_id: `transaction-item-${item.id}`,
+                    line_number: Number(item.line_number ?? item.order_column ?? (index + 1)),
                     product_id: productId,
                     product: item.product,
                     packages: Number(item.packages || 1),
@@ -240,7 +243,7 @@ export const useCartStore = defineStore('cart', () => {
                     total: Number(item.total),
                 };
 
-                return normalizeLine(normalizedLine, `transaction:${transaction?.id || 'unknown'}`, 0);
+                return normalizeLine(normalizedLine, `transaction:${transaction?.id || 'unknown'}`, index);
             });
         }
 
@@ -466,6 +469,7 @@ export const useCartStore = defineStore('cart', () => {
         return {
             ...item,
             line_id: String(item?.line_id || item?.product?.id || `${key}-line-${index}`),
+            line_number: Math.max(1, Number(item?.line_number ?? item?.order_column ?? (index + 1)) || (index + 1)),
             product_id: productId,
             product: item?.product || {
                 id: productId || `${key}-line-${index}`,
@@ -581,6 +585,15 @@ export const useCartStore = defineStore('cart', () => {
     function normalizeProductId(value) {
         const parsed = Number(value);
         return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function getNextLineNumber(currentItems = []) {
+        const maxLineNumber = currentItems.reduce((maxValue, item) => {
+            const candidate = Number(item?.line_number || 0);
+            return Number.isFinite(candidate) ? Math.max(maxValue, candidate) : maxValue;
+        }, 0);
+
+        return maxLineNumber + 1;
     }
 
     function applyTransactionDefaults(transaction) {
