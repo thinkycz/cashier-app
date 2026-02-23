@@ -21,6 +21,7 @@ import axios from 'axios';
 
 const cart = useCartStore();
 const DEFAULT_MANUAL_VAT_RATE = 21;
+const PRODUCTS_PER_PAGE = 30;
 
 const props = defineProps({
     products: Array,
@@ -30,6 +31,17 @@ const props = defineProps({
 const page = usePage();
 
 const searchQuery = ref('');
+const products = ref([...(props.products || [])]);
+const productsMeta = ref({
+    current_page: 1,
+    last_page: 1,
+    per_page: PRODUCTS_PER_PAGE,
+    total: (props.products || []).length,
+});
+const isLoadingProducts = ref(false);
+const productsError = ref('');
+const productRequestSequence = ref(0);
+let productSearchDebounceTimer = null;
 const serverOpenReceipts = ref([...(props.openTransactions || [])]);
 const localOpenReceipts = ref([]);
 const syncQueueReceipts = ref([]);
@@ -129,7 +141,7 @@ const manualProductSuggestions = computed(() => {
     const query = normalizeQuery(manualProductName.value);
     if (!query) return [];
 
-    return (props.products || [])
+    return products.value
         .filter((product) => {
             const name = normalizeQuery(product?.name);
             const shortName = normalizeQuery(product?.short_name);
@@ -166,15 +178,11 @@ const showCustomerAutocomplete = computed(() => {
 });
 
 const filteredProducts = computed(() => {
-    if (!searchQuery.value) return props.products;
-
-    const query = searchQuery.value.toLowerCase();
-    return props.products.filter((product) => {
-        const matchesName = product.name?.toLowerCase().includes(query);
-        const matchesEan = product.ean?.toLowerCase().includes(query);
-        return matchesName || matchesEan;
-    });
+    return products.value;
 });
+
+const hasPreviousProductPage = computed(() => productsMeta.value.current_page > 1);
+const hasNextProductPage = computed(() => productsMeta.value.current_page < productsMeta.value.last_page);
 
 const cartItemsNewestFirst = computed(() => {
     return [...cart.items].reverse();
@@ -421,6 +429,62 @@ const formatPercent = (percent) => {
 
 const productSubtitle = (product) => {
     return product.short_name || '';
+};
+
+const setProductsMetaFromPayload = (metaPayload = {}) => {
+    const currentPage = Number(metaPayload.current_page || 1);
+    const lastPage = Number(metaPayload.last_page || 1);
+    const perPage = Number(metaPayload.per_page || PRODUCTS_PER_PAGE);
+    const total = Number(metaPayload.total ?? products.value.length);
+
+    productsMeta.value = {
+        current_page: Number.isNaN(currentPage) ? 1 : Math.max(1, currentPage),
+        last_page: Number.isNaN(lastPage) ? 1 : Math.max(1, lastPage),
+        per_page: Number.isNaN(perPage) ? PRODUCTS_PER_PAGE : Math.max(1, perPage),
+        total: Number.isNaN(total) ? products.value.length : Math.max(0, total),
+    };
+};
+
+const fetchProductsPage = async ({ search = searchQuery.value, page = 1 } = {}) => {
+    const requestId = productRequestSequence.value + 1;
+    productRequestSequence.value = requestId;
+    isLoadingProducts.value = true;
+    productsError.value = '';
+
+    try {
+        const { data } = await axios.get(route('dashboard.products.index'), {
+            params: {
+                search: search || '',
+                page,
+                per_page: PRODUCTS_PER_PAGE,
+            },
+        });
+
+        if (requestId !== productRequestSequence.value) {
+            return;
+        }
+
+        products.value = Array.isArray(data?.data) ? data.data : [];
+        setProductsMetaFromPayload(data?.meta || {});
+    } catch {
+        if (requestId !== productRequestSequence.value) {
+            return;
+        }
+
+        productsError.value = 'Unable to load products right now. Showing last known results.';
+    } finally {
+        if (requestId === productRequestSequence.value) {
+            isLoadingProducts.value = false;
+        }
+    }
+};
+
+const goToProductPage = async (page) => {
+    const normalizedPage = Math.max(1, Number(page || 1));
+    await fetchProductsPage({
+        search: searchQuery.value,
+        page: normalizedPage,
+    });
 };
 
 const clampPercent = (value) => {
@@ -1705,6 +1769,19 @@ const refreshFromOfflineEvent = () => {
     refreshLocalReceiptViews().catch(() => {});
 };
 
+watch(searchQuery, (nextValue) => {
+    if (productSearchDebounceTimer) {
+        window.clearTimeout(productSearchDebounceTimer);
+    }
+
+    productSearchDebounceTimer = window.setTimeout(() => {
+        fetchProductsPage({
+            search: nextValue,
+            page: 1,
+        }).catch(() => {});
+    }, 300);
+});
+
 watch(() => ({
     id: cart.currentTransaction?.id || null,
     subtotal: cart.subtotal,
@@ -1729,6 +1806,10 @@ watch(() => ({
 
 onMounted(async () => {
     await refreshLocalReceiptViews();
+    await fetchProductsPage({
+        search: searchQuery.value,
+        page: 1,
+    });
 
     if (cart.currentTransaction) {
         cart.loadTransactionByIdentity(
@@ -1748,6 +1829,11 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    if (productSearchDebounceTimer) {
+        window.clearTimeout(productSearchDebounceTimer);
+        productSearchDebounceTimer = null;
+    }
+
     document.removeEventListener('click', handleDocumentClick);
     window.removeEventListener('online', connectionChanged);
     window.removeEventListener('offline', connectionChanged);
@@ -2187,6 +2273,36 @@ onBeforeUnmount(() => {
                                 </Link>
                             </div>
 
+                            <div class="px-4">
+                                <p v-if="productsError" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                    {{ productsError }}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center justify-between px-4">
+                                <p class="text-xs text-slate-500">
+                                    Showing page {{ productsMeta.current_page }} of {{ productsMeta.last_page }} ({{ productsMeta.total }} products)
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        :disabled="!hasPreviousProductPage || isLoadingProducts"
+                                        class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        @click="goToProductPage(productsMeta.current_page - 1)"
+                                    >
+                                        Prev
+                                    </button>
+                                    <button
+                                        type="button"
+                                        :disabled="!hasNextProductPage || isLoadingProducts"
+                                        class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        @click="goToProductPage(productsMeta.current_page + 1)"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="hidden overflow-x-auto lg:block">
                                 <table class="min-w-full border-collapse">
                                     <thead>
@@ -2228,7 +2344,10 @@ onBeforeUnmount(() => {
                                                 </button>
                                             </td>
                                         </tr>
-                                        <tr v-if="filteredProducts.length === 0">
+                                        <tr v-if="isLoadingProducts">
+                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">Loading products...</td>
+                                        </tr>
+                                        <tr v-else-if="filteredProducts.length === 0">
                                             <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">No products found.</td>
                                         </tr>
                                     </tbody>
@@ -2266,7 +2385,8 @@ onBeforeUnmount(() => {
                                         Add to Cart
                                     </button>
                                 </article>
-                                <p v-if="filteredProducts.length === 0" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">No products found.</p>
+                                <p v-if="isLoadingProducts" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">Loading products...</p>
+                                <p v-else-if="filteredProducts.length === 0" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">No products found.</p>
                             </div>
                         </div>
                     </div>

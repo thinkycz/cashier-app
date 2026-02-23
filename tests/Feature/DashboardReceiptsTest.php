@@ -84,6 +84,151 @@ class DashboardReceiptsTest extends TestCase
             );
     }
 
+    public function test_dashboard_limits_products_payload_to_first_30_active_products_for_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        for ($index = 1; $index <= 35; $index++) {
+            $this->createProduct($user, [
+                'name' => sprintf('Product %03d', $index),
+                'short_name' => sprintf('P%03d', $index),
+                'ean' => sprintf('8591234567%03d', $index),
+            ]);
+        }
+
+        $this->createProduct($user, [
+            'name' => 'Inactive Product',
+            'is_active' => false,
+        ]);
+        $this->createProduct($otherUser, [
+            'name' => 'Foreign Product',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('dashboard'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->has('products', 30)
+                ->where('products.0.name', 'Product 001')
+                ->where('products.29.name', 'Product 030')
+            );
+
+        $products = $response->viewData('page')['props']['products'];
+
+        $this->assertSame(
+            ['id', 'name', 'short_name', 'ean', 'vat_rate', 'price'],
+            array_keys($products[0]),
+        );
+    }
+
+    public function test_dashboard_products_endpoint_returns_paginated_active_products_for_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        for ($index = 1; $index <= 35; $index++) {
+            $this->createProduct($user, [
+                'name' => sprintf('Catalog %03d', $index),
+                'short_name' => sprintf('C%03d', $index),
+            ]);
+        }
+
+        $this->createProduct($user, [
+            'name' => 'Inactive Hidden',
+            'is_active' => false,
+        ]);
+        $this->createProduct($otherUser, [
+            'name' => 'Foreign Hidden',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->getJson(route('dashboard.products.index', [
+                'page' => 1,
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.per_page', 30)
+            ->assertJsonPath('meta.total', 35)
+            ->assertJsonPath('filters.search', '')
+            ->assertJsonCount(30, 'data');
+    }
+
+    public function test_dashboard_products_endpoint_searches_name_short_name_and_ean(): void
+    {
+        $user = User::factory()->create();
+
+        $nameMatch = $this->createProduct($user, [
+            'name' => 'Lemon Soda',
+            'short_name' => 'LEM',
+            'ean' => '8591000000001',
+        ]);
+        $shortNameMatch = $this->createProduct($user, [
+            'name' => 'Sparkling Water',
+            'short_name' => 'SPW',
+            'ean' => '8591000000002',
+        ]);
+        $eanMatch = $this->createProduct($user, [
+            'name' => 'Orange Juice',
+            'short_name' => 'ORJ',
+            'ean' => '8591000000999',
+        ]);
+        $this->createProduct($user, [
+            'name' => 'Plain Milk',
+            'short_name' => 'MLK',
+            'ean' => '8591000000003',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->getJson(route('dashboard.products.index', ['search' => 'lemon']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $nameMatch->id);
+
+        $this
+            ->actingAs($user)
+            ->getJson(route('dashboard.products.index', ['search' => 'spw']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $shortNameMatch->id);
+
+        $this
+            ->actingAs($user)
+            ->getJson(route('dashboard.products.index', ['search' => '00999']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $eanMatch->id);
+    }
+
+    public function test_dashboard_products_endpoint_caps_per_page_to_30(): void
+    {
+        $user = User::factory()->create();
+
+        for ($index = 1; $index <= 35; $index++) {
+            $this->createProduct($user, [
+                'name' => sprintf('Paginated %03d', $index),
+            ]);
+        }
+
+        $this
+            ->actingAs($user)
+            ->getJson(route('dashboard.products.index', [
+                'per_page' => 100,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('meta.per_page', 30)
+            ->assertJsonCount(30, 'data');
+    }
+
     public function test_dashboard_creates_open_receipt_when_user_has_none(): void
     {
         $user = User::factory()->create();

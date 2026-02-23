@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\Customer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
@@ -20,8 +21,9 @@ class DashboardController extends Controller
         $userId = auth()->id();
         $this->ensureAtLeastOneOpenReceipt($userId);
 
-        $products = Product::where('user_id', $userId)
-            ->where('is_active', true)
+        $products = $this->activeProductsQueryForUser($userId)
+            ->orderBy('name')
+            ->limit(30)
             ->get();
         $openTransactions = $this->getOpenReceiptsForUser($userId);
         $customers = Customer::where('user_id', $userId)->get();
@@ -30,6 +32,36 @@ class DashboardController extends Controller
             'products' => $products,
             'openTransactions' => $openTransactions,
             'customers' => $customers,
+        ]);
+    }
+
+    public function products(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $perPage = min((int) ($validated['per_page'] ?? 30), 30);
+        $userId = $request->user()->id;
+
+        $paginator = $this->activeProductsQueryForUser($userId, $search)
+            ->orderBy('name')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -363,6 +395,24 @@ class DashboardController extends Controller
             ->with(['customer', 'transactionItems.product'])
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    private function activeProductsQueryForUser(int $userId, ?string $search = null): Builder
+    {
+        $query = Product::query()
+            ->select(['id', 'name', 'short_name', 'ean', 'vat_rate', 'price'])
+            ->where('user_id', $userId)
+            ->where('is_active', true);
+
+        if (filled($search)) {
+            $query->where(function (Builder $builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('short_name', 'like', "%{$search}%")
+                    ->orWhere('ean', 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
     }
 
     private function normalizeCompanyId(mixed $value): ?string

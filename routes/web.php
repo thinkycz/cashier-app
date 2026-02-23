@@ -19,6 +19,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/products', [DashboardController::class, 'products'])->name('dashboard.products.index');
     Route::post('/dashboard/receipts', [DashboardController::class, 'storeReceipt'])->name('dashboard.receipts.store');
     Route::patch('/dashboard/receipts/{transaction}/customer', [DashboardController::class, 'updateReceiptCustomer'])->name('dashboard.receipts.customer');
     Route::patch('/dashboard/receipts/{transaction}/checkout', [DashboardController::class, 'checkoutReceipt'])->name('dashboard.receipts.checkout');
