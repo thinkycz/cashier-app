@@ -13,7 +13,7 @@ class BillController extends Controller
 
     private const DEFAULT_STATUSES = ['cash', 'card', 'order'];
 
-    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'non_vat_invoice', 'delivery_note', 'non_vat_bill', 'quotation'];
+    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'non_vat_invoice', 'delivery_note', 'non_vat_bill', 'quotation', 'vat_bill'];
 
     /**
      * Display a listing of the resource.
@@ -167,6 +167,7 @@ class BillController extends Controller
             'non_vat_invoice' => 'documents.non_vat_invoice',
             'delivery_note' => 'documents.delivery_note',
             'non_vat_bill' => 'bills.non_vat_bill',
+            'vat_bill' => 'bills.vat_bill',
             'quotation' => 'bills.quotation',
             default => $bill->status === 'order' ? 'bills.quotation' : ($request->user()->is_vat_payer ? 'bills.vat_bill' : 'bills.non_vat_bill'),
         };

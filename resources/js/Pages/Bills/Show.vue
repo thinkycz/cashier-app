@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
+import Dropdown from '@/Components/Dropdown.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -24,7 +25,8 @@ const currentPreviewLabel = computed(() => {
     if (selectedPrintDocument.value === 'delivery_note') return 'Delivery Note';
     if (selectedPrintDocument.value === 'non_vat_bill') return 'Non-VAT bill';
     if (selectedPrintDocument.value === 'quotation') return 'Quotation';
-    return 'VAT bill';
+    if (selectedPrintDocument.value === 'vat_bill') return 'VAT bill';
+    return 'Bill';
 });
 
 const customerDisplayName = (customer) => {
@@ -237,78 +239,9 @@ const deleteBill = () => {
                     </div>
                 </section>
 
-                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                    <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                        <h3 class="text-base font-semibold text-slate-800">Documents</h3>
-                    </div>
-                    <div class="flex flex-wrap gap-2 px-6 py-5">
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
-                            @click="openPrintPreviewModal('bill')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
-                            </svg>
-                            Print VAT bill
-                        </button>
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-lime-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-lime-700"
-                            @click="openPrintPreviewModal('non_vat_bill')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
-                            </svg>
-                            Print Non-VAT bill
-                        </button>
-                        <button
-                            v-if="isVatPayer"
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-cyan-700"
-                            @click="openPrintPreviewModal('invoice')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            Print VAT invoice
-                        </button>
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-indigo-700"
-                            @click="openPrintPreviewModal('non_vat_invoice')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            Print Non-VAT Invoice
-                        </button>
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-slate-800"
-                            @click="openPrintPreviewModal('delivery_note')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4m4 4h8" />
-                            </svg>
-                            Print Delivery Note
-                        </button>
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-amber-700"
-                            @click="openPrintPreviewModal('quotation')"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            Print Quotation
-                        </button>
-                    </div>
-                </section>
-
                 <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
-                        <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
+                    <article class="relative z-10 rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
+                        <div class="rounded-t-xl border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h3 class="text-base font-semibold text-slate-800">Transaction Details</h3>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
@@ -320,7 +253,7 @@ const deleteBill = () => {
                                 <dt class="text-slate-500">Date</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ formatDate(bill.created_at) }}</dd>
                             </div>
-                            <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
                                 <dt class="text-slate-500">Status</dt>
                                 <dd>
                                     <span
@@ -329,6 +262,72 @@ const deleteBill = () => {
                                     >
                                         {{ bill.status }}
                                     </span>
+                                </dd>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <dt class="text-slate-500">Documents</dt>
+                                <dd>
+                                    <Dropdown align="right" width="48">
+                                        <template #trigger>
+                                            <button
+                                                type="button"
+                                                class="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-50"
+                                            >
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                                                </svg>
+                                                Print
+                                                <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                        </template>
+                                        <template #content>
+                                            <button
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('vat_bill')"
+                                            >
+                                                VAT bill
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('non_vat_bill')"
+                                            >
+                                                Non-VAT bill
+                                            </button>
+                                            <button
+                                                v-if="isVatPayer"
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('invoice')"
+                                            >
+                                                VAT invoice
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('non_vat_invoice')"
+                                            >
+                                                Non-VAT Invoice
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('delivery_note')"
+                                            >
+                                                Delivery Note
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                                @click="openPrintPreviewModal('quotation')"
+                                            >
+                                                Quotation
+                                            </button>
+                                        </template>
+                                    </Dropdown>
                                 </dd>
                             </div>
                         </dl>
