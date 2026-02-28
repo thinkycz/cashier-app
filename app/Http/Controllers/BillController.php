@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Collection;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\Transaction;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Inertia\Inertia;
 
 class BillController extends Controller
 {
     private const ALLOWED_STATUSES = ['open', 'cash', 'card', 'order'];
+
     private const DEFAULT_STATUSES = ['cash', 'card', 'order'];
-    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'delivery_note'];
+
+    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'non_vat_invoice', 'delivery_note'];
 
     /**
      * Display a listing of the resource.
@@ -28,12 +30,12 @@ class BillController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_id', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($subQuery) use ($search) {
-                      $subQuery->where('first_name', 'like', "%{$search}%")
-                          ->orWhere('last_name', 'like', "%{$search}%")
-                          ->orWhere('company_name', 'like', "%{$search}%")
-                          ->orWhere('company_id', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('customer', function ($subQuery) use ($search) {
+                        $subQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('company_name', 'like', "%{$search}%")
+                            ->orWhere('company_id', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -120,7 +122,7 @@ class BillController extends Controller
                     'product' => $item->product,
                     'packs' => (int) ($item->packages ?: 1),
                     'quantity' => (int) $item->quantity,
-                    'vat_rate' => number_format((float) $item->vat_rate, 2, ',', ' ') . ' %',
+                    'vat_rate' => number_format((float) $item->vat_rate, 2, ',', ' ').' %',
                     'calculated_unit_price' => (float) $item->unit_price,
                     'total_price' => (float) $item->total,
                     'vat_rate_value' => (float) $item->vat_rate,
@@ -144,6 +146,8 @@ class BillController extends Controller
                 'company_id' => $supplier?->company_id,
                 'vat_id' => $supplier?->vat_id,
                 'bank_account' => $supplier?->bank_account,
+                'email' => $supplier?->email,
+                'phone_number' => $supplier?->phone_number,
             ],
             'customer' => (object) [
                 'company_name' => $bill->customer?->company_name,
@@ -160,6 +164,7 @@ class BillController extends Controller
 
         $view = match ($documentType) {
             'invoice' => 'documents.invoice',
+            'non_vat_invoice' => 'documents.non_vat_invoice',
             'delivery_note' => 'documents.delivery_note',
             default => $bill->status === 'order' ? 'bills.quotation' : 'bills.bill',
         };
@@ -178,13 +183,13 @@ class BillController extends Controller
 
         foreach ($billItems as $item) {
             $rate = (float) $item->vat_rate_value;
-            $label = number_format($rate, 2, ',', ' ') . ' %';
+            $label = number_format($rate, 2, ',', ' ').' %';
             $totalInclVat = (float) $item->total_price;
             $divider = 1 + ($rate / 100);
             $totalExclVat = $divider > 0 ? ($totalInclVat / $divider) : $totalInclVat;
             $vatAmount = $totalInclVat - $totalExclVat;
 
-            if (!isset($summary[$label])) {
+            if (! isset($summary[$label])) {
                 $summary[$label] = [
                     'base' => 0.0,
                     'vat' => 0.0,
@@ -209,7 +214,7 @@ class BillController extends Controller
             $rawStatuses = [$rawStatuses];
         }
 
-        if (!is_array($rawStatuses)) {
+        if (! is_array($rawStatuses)) {
             return [];
         }
 

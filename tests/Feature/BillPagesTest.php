@@ -17,8 +17,8 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_only_lists_authenticated_users_transactions(): void
     {
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
+        $user = $this->createUser();
+        $otherUser = $this->createUser();
 
         $customer = $this->createCustomer($user, ['company_name' => 'Own Customer']);
 
@@ -54,7 +54,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_show_renders_for_owner(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $customer = $this->createCustomer($user, ['company_name' => 'Owner Customer']);
 
         $transaction = $this->createTransaction($user, [
@@ -77,7 +77,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_can_filter_by_status(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
         $this->createTransaction($user, ['status' => 'open']);
@@ -99,7 +99,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_defaults_to_non_open_statuses_when_filter_is_missing(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $this->createTransaction($user, ['status' => 'cash']);
         $this->createTransaction($user, ['status' => 'card']);
@@ -126,7 +126,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_can_filter_by_multiple_statuses(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
         $cardTransaction = $this->createTransaction($user, ['status' => 'card']);
@@ -152,14 +152,14 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_returns_no_results_for_explicit_empty_status_selection(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $this->createTransaction($user, ['status' => 'cash']);
         $this->createTransaction($user, ['status' => 'open']);
 
         $response = $this
             ->actingAs($user)
-            ->get(route('bills.index') . '?status[]=');
+            ->get(route('bills.index').'?status[]=');
 
         $response
             ->assertOk()
@@ -172,7 +172,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_index_ignores_invalid_status_values(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         $cashTransaction = $this->createTransaction($user, ['status' => 'cash']);
         $this->createTransaction($user, ['status' => 'card']);
@@ -194,7 +194,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_show_includes_adjustment_fields_when_present(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $transaction = $this->createTransaction($user, [
             'status' => 'cash',
             'adjustment_type' => 'discount',
@@ -218,8 +218,8 @@ class BillPagesTest extends TestCase
 
     public function test_user_gets_404_for_another_users_bill_show_route(): void
     {
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
+        $user = $this->createUser();
+        $otherUser = $this->createUser();
         $transaction = $this->createTransaction($otherUser, ['status' => 'cash']);
 
         $this->actingAs($user)
@@ -229,7 +229,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_preview_uses_bill_template_for_cash_and_card_statuses(): void
     {
-        $user = User::factory()->create([
+        $user = $this->createUser([
             'company_name' => 'Test Supplier s.r.o.',
             'company_id' => '12345678',
             'vat_id' => 'CZ12345678',
@@ -254,7 +254,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_preview_uses_quotation_template_for_order_status(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $transaction = $this->createTransaction($user, ['status' => 'order']);
         $product = $this->createProduct($user, ['short_name' => 'Short']);
         $this->createTransactionItem($transaction, $product);
@@ -269,7 +269,7 @@ class BillPagesTest extends TestCase
 
     public function test_bills_preview_can_render_invoice_document_template(): void
     {
-        $user = User::factory()->create([
+        $user = $this->createUser([
             'company_name' => 'Supplier s.r.o.',
             'company_id' => '12345678',
         ]);
@@ -281,7 +281,7 @@ class BillPagesTest extends TestCase
         $product = $this->createProduct($user);
         $this->createTransactionItem($transaction, $product);
 
-        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=invoice');
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=invoice');
 
         $response
             ->assertOk()
@@ -289,14 +289,40 @@ class BillPagesTest extends TestCase
             ->assertSee('Faktura', false);
     }
 
+    public function test_bills_preview_can_render_non_vat_invoice_document_template(): void
+    {
+        $user = $this->createUser([
+            'company_name' => 'Supplier s.r.o.',
+            'company_id' => '12345678',
+            'vat_id' => null,
+            'bank_account' => '1032861985/5500',
+        ]);
+        $customer = $this->createCustomer($user, ['company_name' => 'Buyer a.s.', 'company_id' => '87654321']);
+        $transaction = $this->createTransaction($user, [
+            'status' => 'cash',
+            'customer_id' => $customer->id,
+            'total' => 70000,
+        ]);
+        $product = $this->createProduct($user, ['name' => 'Programátorské služby']);
+        $this->createTransactionItem($transaction, $product, ['total' => 70000, 'unit_price' => 70000, 'quantity' => 1]);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=non_vat_invoice');
+
+        $response
+            ->assertOk()
+            ->assertViewIs('documents.non_vat_invoice')
+            ->assertSee('Neplátce DPH', false)
+            ->assertSee('Programátorské služby', false);
+    }
+
     public function test_bills_preview_can_render_delivery_note_document_template(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         $transaction = $this->createTransaction($user, ['status' => 'order']);
         $product = $this->createProduct($user);
         $this->createTransactionItem($transaction, $product);
 
-        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=delivery_note');
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=delivery_note');
 
         $response
             ->assertOk()
@@ -306,8 +332,8 @@ class BillPagesTest extends TestCase
 
     public function test_user_gets_404_for_another_users_bill_preview_route(): void
     {
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
+        $user = $this->createUser();
+        $otherUser = $this->createUser();
         $transaction = $this->createTransaction($otherUser, ['status' => 'cash']);
 
         $this->actingAs($user)
@@ -325,6 +351,11 @@ class BillPagesTest extends TestCase
             'total' => 20,
             'status' => 'open',
         ], $overrides));
+    }
+
+    private function createUser(array $overrides = []): User
+    {
+        return User::factory()->create($overrides);
     }
 
     private function createCustomer(User $user, array $overrides = []): Customer

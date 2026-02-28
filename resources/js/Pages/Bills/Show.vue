@@ -18,6 +18,7 @@ const previewUrl = computed(() => `${basePreviewUrl}?document=${selectedPrintDoc
 const embeddedPreviewUrl = computed(() => `${previewUrl.value}&embedded=1`);
 const currentPreviewLabel = computed(() => {
     if (selectedPrintDocument.value === 'invoice') return 'Invoice';
+    if (selectedPrintDocument.value === 'non_vat_invoice') return 'Non-VAT Invoice';
     if (selectedPrintDocument.value === 'delivery_note') return 'Delivery Note';
     return 'Bill';
 });
@@ -256,6 +257,16 @@ const deleteBill = () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                             Print Invoice
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-indigo-700"
+                            @click="openPrintPreviewModal('non_vat_invoice')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            Print Non-VAT Invoice
                         </button>
                         <button
                             type="button"
