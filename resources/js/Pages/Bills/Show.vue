@@ -284,13 +284,15 @@ const deleteBill = () => {
                                         </template>
                                         <template #content>
                                             <button
-                                                type="button"
-                                                class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
-                                                @click="openPrintPreviewModal('vat_bill')"
-                                            >
-                                                VAT bill
-                                            </button>
+                                            v-if="isVatPayer"
+                                            type="button"
+                                            class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
+                                            @click="openPrintPreviewModal('vat_bill')"
+                                        >
+                                            VAT bill
+                                        </button>
                                             <button
+                                                v-if="!isVatPayer"
                                                 type="button"
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('non_vat_bill')"
@@ -306,6 +308,7 @@ const deleteBill = () => {
                                                 VAT invoice
                                             </button>
                                             <button
+                                                v-if="!isVatPayer"
                                                 type="button"
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('non_vat_invoice')"
