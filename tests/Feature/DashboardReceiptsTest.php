@@ -68,19 +68,20 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Dashboard')
-                ->has('openTransactions', 1)
-                ->where('openTransactions.0.id', $ownOpenTransaction->id)
-                ->has('products', 1)
-                ->where('products.0.id', $ownProduct->id)
-                ->where('products.0.name', 'Own Product')
-                ->where('products.0.short_name', null)
-                ->where('products.0.ean', null)
-                ->where('products.0.price', '100.00')
-                ->where('products.0.vat_rate', '21.00')
-                ->has('customers', 1)
-                ->where('customers.0.id', $ownCustomer->id)
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Dashboard')
+                    ->has('openTransactions', 1)
+                    ->where('openTransactions.0.id', $ownOpenTransaction->id)
+                    ->has('products', 1)
+                    ->where('products.0.id', $ownProduct->id)
+                    ->where('products.0.name', 'Own Product')
+                    ->where('products.0.short_name', null)
+                    ->where('products.0.ean', null)
+                    ->where('products.0.price', '100.00')
+                    ->where('products.0.vat_rate', '21.00')
+                    ->has('customers', 1)
+                    ->where('customers.0.id', $ownCustomer->id)
             );
     }
 
@@ -111,11 +112,12 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Dashboard')
-                ->has('products', 30)
-                ->where('products.0.name', 'Product 001')
-                ->where('products.29.name', 'Product 030')
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Dashboard')
+                    ->has('products', 30)
+                    ->where('products.0.name', 'Product 001')
+                    ->where('products.29.name', 'Product 030')
             );
 
         $products = $response->viewData('page')['props']['products'];
@@ -240,9 +242,10 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Dashboard')
-                ->has('openTransactions', 1)
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Dashboard')
+                    ->has('openTransactions', 1)
             );
 
         $this->assertDatabaseHas('transactions', [
@@ -359,6 +362,7 @@ class DashboardReceiptsTest extends TestCase
     {
         Http::fake([
             'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/*' => Http::response([
+                'ico' => '87654321',
                 'dic' => 'CZ87654321',
                 'obchodniJmeno' => 'Ares Company s.r.o.',
                 'sidlo' => [
@@ -527,10 +531,11 @@ class DashboardReceiptsTest extends TestCase
             ->assertJsonPath('transaction.adjustment_amount', '5.00')
             ->assertJsonPath('transaction.transaction_items.0.packages', 2)
             ->assertJsonPath('transaction.transaction_items.1.packages', 4)
-            ->assertJson(fn ($json) => $json
-                ->has('open_transactions', 1)
-                ->whereType('active_transaction_id', 'integer')
-                ->etc()
+            ->assertJson(
+                fn($json) => $json
+                    ->has('open_transactions', 1)
+                    ->whereType('active_transaction_id', 'integer')
+                    ->etc()
             );
 
         $transaction->refresh();
@@ -769,10 +774,11 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJson(fn ($json) => $json
-                ->has('open_transactions', 1)
-                ->whereType('active_transaction_id', 'integer')
-                ->etc()
+            ->assertJson(
+                fn($json) => $json
+                    ->has('open_transactions', 1)
+                    ->whereType('active_transaction_id', 'integer')
+                    ->etc()
             );
 
         $this->assertSame('card', $transaction->status);
@@ -929,9 +935,10 @@ class DashboardReceiptsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJson(fn ($json) => $json
-                ->has('open_transactions', 1)
-                ->whereType('active_transaction_id', 'integer')
+            ->assertJson(
+                fn($json) => $json
+                    ->has('open_transactions', 1)
+                    ->whereType('active_transaction_id', 'integer')
             );
 
         $this->assertDatabaseMissing('transactions', [

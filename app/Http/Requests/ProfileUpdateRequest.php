@@ -22,6 +22,8 @@ class ProfileUpdateRequest extends FormRequest
             'city' => $this->normalizeNullableString('city'),
             'zip' => $this->normalizeNullableString('zip'),
             'country_code' => $this->normalizeNullableString('country_code'),
+            'is_vat_payer' => $this->boolean('is_vat_payer'),
+            'subject_type' => $this->normalizeNullableString('subject_type'),
         ]);
     }
 
@@ -57,6 +59,8 @@ class ProfileUpdateRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:255'],
             'zip' => ['nullable', 'string', 'max:255'],
             'country_code' => ['nullable', 'string', 'size:2'],
+            'is_vat_payer' => ['boolean'],
+            'subject_type' => ['nullable', 'string', 'in:fyzicka osoba,pravnicka osoba'],
         ];
     }
 

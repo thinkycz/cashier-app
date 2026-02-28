@@ -5,6 +5,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Checkbox from '@/Components/Checkbox.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -14,6 +16,8 @@ const form = useForm({
     company_id: '',
     company_name: '',
     vat_id: '',
+    is_vat_payer: false,
+    subject_type: 'fyzicka osoba',
     street: '',
     city: '',
     zip: '',
@@ -47,6 +51,8 @@ const fillFromAres = async () => {
         form.company_id = data.company_id ?? form.company_id;
         form.company_name = data.company_name ?? '';
         form.vat_id = data.vat_id ?? '';
+        form.is_vat_payer = data.is_vat_payer ?? false;
+        form.subject_type = data.subject_type ?? 'fyzicka osoba';
         form.street = data.street ?? '';
         form.city = data.city ?? '';
         form.zip = data.zip ?? '';
@@ -164,6 +170,32 @@ const submit = () => {
                     />
 
                     <InputError class="mt-2" :message="form.errors.vat_id" />
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                    <InputLabel for="subject_type" value="Subject Type" />
+
+                    <SelectInput
+                        id="subject_type"
+                        class="mt-1 block"
+                        v-model="form.subject_type"
+                    >
+                        <option value="fyzicka osoba">Fyzická osoba</option>
+                        <option value="pravnicka osoba">Právnická osoba</option>
+                    </SelectInput>
+
+                    <InputError class="mt-2" :message="form.errors.subject_type" />
+                </div>
+
+                <div class="flex items-center mt-6">
+                    <label class="flex items-center">
+                        <Checkbox name="is_vat_payer" v-model:checked="form.is_vat_payer" />
+                        <span class="ms-2 text-sm text-slate-600">VAT Payer</span>
+                    </label>
+
+                    <InputError class="mt-2" :message="form.errors.is_vat_payer" />
                 </div>
             </div>
 

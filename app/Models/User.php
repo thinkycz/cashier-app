@@ -30,6 +30,8 @@ class User extends Authenticatable
         'city',
         'zip',
         'country_code',
+        'is_vat_payer',
+        'subject_type',
         'password',
     ];
 
@@ -53,6 +55,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_vat_payer' => 'boolean',
         ];
     }
 
