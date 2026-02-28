@@ -14,7 +14,7 @@ class BillActionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_open_completed_bill_as_new_open_receipt(): void
+    public function test_user_can_reopen_completed_bill_in_dashboard(): void
     {
         $user = User::factory()->create();
         assert($user instanceof User);
@@ -43,27 +43,18 @@ class BillActionsTest extends TestCase
             ->actingAs($user)
             ->post(route('bills.open', $bill));
 
-        $openReceipt = Transaction::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->latest('id')
-            ->firstOrFail();
-
         $response->assertRedirect(route('dashboard', [
-            'active_transaction_id' => $openReceipt->id,
+            'active_transaction_id' => $bill->id,
         ]));
 
-        $this->assertNotSame($bill->id, $openReceipt->id);
-        $this->assertSame($bill->customer_id, $openReceipt->customer_id);
-        $this->assertSame($bill->subtotal, $openReceipt->subtotal);
-        $this->assertSame($bill->discount, $openReceipt->discount);
-        $this->assertSame($bill->adjustment_type, $openReceipt->adjustment_type);
-        $this->assertSame($bill->adjustment_percent, $openReceipt->adjustment_percent);
-        $this->assertSame($bill->adjustment_amount, $openReceipt->adjustment_amount);
-        $this->assertSame($bill->total, $openReceipt->total);
-
-        $this->assertDatabaseCount('transaction_items', 2);
+        $this->assertDatabaseCount('transactions', 1);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $bill->id,
+            'status' => 'open',
+        ]);
+        $this->assertDatabaseCount('transaction_items', 1);
         $this->assertDatabaseHas('transaction_items', [
-            'transaction_id' => $openReceipt->id,
+            'transaction_id' => $bill->id,
             'product_id' => $product->id,
             'packages' => 1,
             'quantity' => 2,
