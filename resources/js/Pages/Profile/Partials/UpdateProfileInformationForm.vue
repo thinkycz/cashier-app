@@ -8,6 +8,9 @@ import Checkbox from '@/Components/Checkbox.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 defineProps({
     mustVerifyEmail: {
@@ -45,7 +48,7 @@ const fillFromAres = async () => {
 
     const ico = String(form.company_id ?? '').replace(/\D/g, '');
     if (ico.length !== 8) {
-        aresError.value = 'Company ID must be 8 digits.';
+        aresError.value = t('profile.company_must_be_8');
         return;
     }
 
@@ -71,7 +74,7 @@ const fillFromAres = async () => {
         const message =
             error?.response?.data?.errors?.company_id?.[0] ??
             error?.response?.data?.message ??
-            'Company lookup failed.';
+            t('profile.lookup_failed');
 
         aresError.value = message;
     } finally {
@@ -84,11 +87,11 @@ const fillFromAres = async () => {
     <section class="space-y-6">
         <header>
             <h2 class="text-lg font-semibold text-slate-900">
-                Profile Information
+                {{ $t('profile.profile_information') }}
             </h2>
 
             <p class="mt-1 text-sm text-slate-600">
-                Update your account and billing details.
+                {{ $t('profile.profile_information_desc') }}
             </p>
         </header>
 
@@ -102,13 +105,13 @@ const fillFromAres = async () => {
                     <!-- Personal Details -->
                     <div>
                         <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h3 class="text-base font-semibold leading-7 text-slate-900">Personal Details</h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Your basic information and contacts.</p>
+                            <h3 class="text-base font-semibold leading-7 text-slate-900">{{ $t('profile.personal_details') }}</h3>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('profile.personal_details_desc') }}</p>
                         </div>
                         <div class="space-y-5">
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="first_name" value="First Name" />
+                                    <InputLabel for="first_name" :value="$t('profile.first_name')" />
                                     <TextInput
                                         id="first_name"
                                         type="text"
@@ -120,7 +123,7 @@ const fillFromAres = async () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="last_name" value="Last Name" />
+                                    <InputLabel for="last_name" :value="$t('profile.last_name')" />
                                     <TextInput
                                         id="last_name"
                                         type="text"
@@ -134,7 +137,7 @@ const fillFromAres = async () => {
 
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="email" value="Email" />
+                                    <InputLabel for="email" :value="$t('profile.email')" />
                                     <TextInput
                                         id="email"
                                         type="email"
@@ -147,7 +150,7 @@ const fillFromAres = async () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="phone_number" value="Phone Number" />
+                                    <InputLabel for="phone_number" :value="$t('profile.phone_number')" />
                                     <TextInput
                                         id="phone_number"
                                         type="text"
@@ -162,14 +165,14 @@ const fillFromAres = async () => {
 
                         <div v-if="mustVerifyEmail && user.email_verified_at === null" class="mt-6">
                             <p class="mt-2 text-sm text-slate-700">
-                                Your email address is unverified.
+                                {{ $t('profile.unverified_email') }}
                                 <Link
                                     :href="route('verification.send')"
                                     method="post"
                                     as="button"
                                     class="rounded-md text-sm font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                                 >
-                                    Click here to re-send the verification email.
+                                    {{ $t('profile.resend_verification') }}
                                 </Link>
                             </p>
 
@@ -177,7 +180,7 @@ const fillFromAres = async () => {
                                 v-show="status === 'verification-link-sent'"
                                 class="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"
                             >
-                                A new verification link has been sent to your email address.
+                                {{ $t('profile.verification_sent') }}
                             </div>
                         </div>
                     </div>
@@ -188,13 +191,13 @@ const fillFromAres = async () => {
                     <!-- Company Details -->
                     <div>
                         <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h3 class="text-base font-semibold leading-7 text-slate-900">Company Details</h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Business or freelancing information.</p>
+                            <h3 class="text-base font-semibold leading-7 text-slate-900">{{ $t('profile.company_details') }}</h3>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('profile.company_details_desc') }}</p>
                         </div>
                         <div class="space-y-5">
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="company_name" value="Company Name" />
+                                    <InputLabel for="company_name" :value="$t('profile.company_name')" />
                                     <TextInput
                                         id="company_name"
                                         type="text"
@@ -206,7 +209,7 @@ const fillFromAres = async () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="company_id" value="Company ID" />
+                                    <InputLabel for="company_id" :value="$t('profile.company_id')" />
                                     <div class="mt-1 flex gap-2">
                                         <TextInput
                                             id="company_id"
@@ -223,7 +226,7 @@ const fillFromAres = async () => {
                                               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Fill from ARES
+                                            {{ $t('profile.fill_from_ares') }}
                                         </SecondaryButton>
                                     </div>
                                     <InputError class="mt-2" :message="form.errors.company_id" />
@@ -233,7 +236,7 @@ const fillFromAres = async () => {
 
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="vat_id" value="VAT ID" />
+                                    <InputLabel for="vat_id" :value="$t('profile.vat_id')" />
                                     <TextInput
                                         id="vat_id"
                                         type="text"
@@ -244,7 +247,7 @@ const fillFromAres = async () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="bank_account" value="Bank Account" />
+                                    <InputLabel for="bank_account" :value="$t('profile.bank_account')" />
                                     <TextInput
                                         id="bank_account"
                                         type="text"
@@ -257,14 +260,14 @@ const fillFromAres = async () => {
 
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="subject_type" value="Subject Type" />
+                                    <InputLabel for="subject_type" :value="$t('profile.subject_type')" />
                                     <SelectInput
                                         id="subject_type"
                                         class="mt-1 block w-full"
                                         v-model="form.subject_type"
                                     >
-                                        <option value="fyzicka osoba">Fyzická osoba</option>
-                                        <option value="pravnicka osoba">Právnická osoba</option>
+                                        <option value="fyzicka osoba">{{ $t('profile.natural_person') }}</option>
+                                        <option value="pravnicka osoba">{{ $t('profile.legal_person') }}</option>
                                     </SelectInput>
                                     <InputError class="mt-2" :message="form.errors.subject_type" />
                                 </div>
@@ -272,7 +275,7 @@ const fillFromAres = async () => {
                                 <div class="flex items-center mt-6">
                                     <label class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                                         <Checkbox name="is_vat_payer" v-model:checked="form.is_vat_payer" />
-                                        <span class="text-sm font-medium text-slate-700">VAT Payer</span>
+                                        <span class="text-sm font-medium text-slate-700">{{ $t('profile.vat_payer') }}</span>
                                     </label>
                                     <InputError class="mt-2" :message="form.errors.is_vat_payer" />
                                 </div>
@@ -283,12 +286,12 @@ const fillFromAres = async () => {
                     <!-- Address -->
                     <div>
                         <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h3 class="text-base font-semibold leading-7 text-slate-900">Address</h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Registered business location.</p>
+                            <h3 class="text-base font-semibold leading-7 text-slate-900">{{ $t('profile.address') }}</h3>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('profile.address_desc') }}</p>
                         </div>
                         <div class="space-y-5">
                             <div>
-                                <InputLabel for="street" value="Street & Number" />
+                                <InputLabel for="street" :value="$t('profile.street_and_number')" />
                                 <TextInput
                                     id="street"
                                     type="text"
@@ -301,7 +304,7 @@ const fillFromAres = async () => {
 
                             <div class="grid gap-5 sm:grid-cols-3">
                                 <div class="sm:col-span-2">
-                                    <InputLabel for="city" value="City" />
+                                    <InputLabel for="city" :value="$t('profile.city')" />
                                     <TextInput
                                         id="city"
                                         type="text"
@@ -313,7 +316,7 @@ const fillFromAres = async () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="zip" value="ZIP Code" />
+                                    <InputLabel for="zip" :value="$t('profile.zip_code')" />
                                     <TextInput
                                         id="zip"
                                         type="text"
@@ -326,14 +329,14 @@ const fillFromAres = async () => {
                             </div>
 
                             <div>
-                                <InputLabel for="country_code" value="Country Code" />
+                                <InputLabel for="country_code" :value="$t('profile.country_code')" />
                                 <TextInput
                                     id="country_code"
                                     type="text"
                                     class="mt-1 block w-full sm:max-w-xs"
                                     v-model="form.country_code"
                                     maxlength="2"
-                                    placeholder="e.g. CZ"
+                                    :placeholder="$t('profile.eg_cz')"
                                     autocomplete="country"
                                 />
                                 <InputError class="mt-2" :message="form.errors.country_code" />
@@ -345,7 +348,7 @@ const fillFromAres = async () => {
 
             <!-- Actions -->
             <div class="flex items-center gap-4 pt-6 border-t border-slate-200">
-                <PrimaryButton :disabled="form.processing">Save Changes</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">{{ $t('profile.save_changes') }}</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -357,7 +360,7 @@ const fillFromAres = async () => {
                         v-if="form.recentlySuccessful"
                         class="text-sm font-medium text-emerald-700"
                     >
-                        Saved.
+                        {{ $t('profile.saved') }}
                     </p>
                 </Transition>
             </div>

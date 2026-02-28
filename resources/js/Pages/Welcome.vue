@@ -1,6 +1,13 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import BrandLogo from '@/Components/BrandLogo.vue';
+import Dropdown from '@/Components/Dropdown.vue';
+import DropdownLink from '@/Components/DropdownLink.vue';
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const currentLocale = computed(() => page.props.locale || 'en');
 
 defineProps({
     canLogin: {
@@ -13,23 +20,53 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Cashier App - Simple POS Solution" />
+    <Head :title="$t('welcome.title')" />
 
     <div class="min-h-screen bg-gradient-to-br from-cyan-50 via-sky-50 to-teal-100">
         <!-- Navigation -->
-        <nav class="bg-white/85 shadow-sm backdrop-blur border-b border-teal-100/80">
+        <nav class="relative z-50 bg-white/85 shadow-sm backdrop-blur border-b border-teal-100/80">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <BrandLogo class="mr-3" />
                     </div>
                     <div class="flex items-center space-x-4">
+                        <div class="relative z-50 ms-3">
+                            <Dropdown align="right" width="48">
+                                <template #trigger>
+                                    <span class="inline-flex">
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-100 bg-white/80 text-xl font-semibold uppercase tracking-wide text-teal-700 shadow-sm transition duration-150 ease-in-out hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+                                            :aria-label="`Current language: ${currentLocale}`"
+                                        >
+                                            {{ currentLocale === 'cs' ? '🇨🇿' : '🇬🇧' }}
+                                        </button>
+                                    </span>
+                                </template>
+
+                                <template #content>
+                                    <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'en' }" as="button">
+                                        <span class="inline-flex items-center gap-2">
+                                            <span class="text-lg leading-none">🇬🇧</span>
+                                            <span>English</span>
+                                        </span>
+                                    </DropdownLink>
+                                    <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'cs' }" as="button">
+                                        <span class="inline-flex items-center gap-2">
+                                            <span class="text-lg leading-none">🇨🇿</span>
+                                            <span>Čeština</span>
+                                        </span>
+                                    </DropdownLink>
+                                </template>
+                            </Dropdown>
+                        </div>
                         <Link
                             v-if="$page.props.auth.user"
                             :href="route('dashboard')"
                             class="text-slate-600 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium transition"
                         >
-                            Dashboard
+                            {{ $t('welcome.dashboard') }}
                         </Link>
                         <template v-else>
                             <Link
@@ -37,14 +74,14 @@ defineProps({
                                 :href="route('login')"
                                 class="text-slate-600 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium transition"
                             >
-                                Log in
+                                {{ $t('welcome.log_in') }}
                             </Link>
                             <Link
                                 v-if="canRegister"
                                 :href="route('register')"
                                 class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium transition shadow-sm shadow-teal-300/40"
                             >
-                                Get Started
+                                {{ $t('welcome.get_started') }}
                             </Link>
                         </template>
                     </div>
@@ -61,12 +98,11 @@ defineProps({
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
                 <div class="text-center relative">
                     <h1 class="text-4xl md:text-6xl font-bold text-slate-900 mb-6 tracking-tight">
-                        Simple POS Solution
-                        <span class="block text-teal-600">for Your Business</span>
+                        {{ $t('welcome.hero_title_1') }}
+                        <span class="block text-teal-600">{{ $t('welcome.hero_title_2') }}</span>
                     </h1>
                     <p class="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-                        Manage your products, handle transactions, and generate bills with ease.
-                        A modern point-of-sale system designed for small to medium businesses.
+                        {{ $t('welcome.hero_desc') }}
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
@@ -74,7 +110,7 @@ defineProps({
                             :href="route('dashboard')"
                             class="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200 shadow-lg shadow-teal-300/30"
                         >
-                            Go to Dashboard
+                            {{ $t('welcome.go_to_dashboard') }}
                         </Link>
                         <template v-else>
                             <Link
@@ -82,14 +118,14 @@ defineProps({
                                 :href="route('register')"
                                 class="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition duration-200 shadow-lg shadow-teal-300/30"
                             >
-                                Start Free Trial
+                                {{ $t('welcome.start_free_trial') }}
                             </Link>
                             <Link
                                 v-if="canLogin"
                                 :href="route('login')"
                                 class="border-2 border-teal-200 hover:border-teal-300 text-teal-700 hover:text-teal-800 bg-white/80 px-8 py-3 rounded-lg text-lg font-medium transition duration-200"
                             >
-                                Sign In
+                                {{ $t('welcome.sign_in') }}
                             </Link>
                         </template>
                     </div>
@@ -198,8 +234,8 @@ defineProps({
         <div class="bg-gradient-to-b from-transparent via-white/30 to-cyan-50/65 py-24">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
-                    <h2 class="text-3xl font-bold text-slate-900 mb-4">Everything You Need</h2>
-                    <p class="text-xl text-slate-600">Powerful features to streamline your operations</p>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-4">{{ $t('welcome.features_title') }}</h2>
+                    <p class="text-xl text-slate-600">{{ $t('welcome.features_desc') }}</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -210,8 +246,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Product Management</h3>
-                        <p class="text-slate-600">Easily add, update, and organize your product catalog with detailed information and pricing.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_1_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_1_desc') }}</p>
                     </div>
 
                     <!-- Feature 2 -->
@@ -221,8 +257,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Transaction Handling</h3>
-                        <p class="text-slate-600">Process sales quickly and efficiently with real-time transaction tracking and receipt generation.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_2_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_2_desc') }}</p>
                     </div>
 
                     <!-- Feature 3 -->
@@ -232,8 +268,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Bill Management</h3>
-                        <p class="text-slate-600">Generate professional invoices and bills with automatic calculations and customer details.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_3_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_3_desc') }}</p>
                     </div>
 
                     <!-- Feature 4 -->
@@ -243,8 +279,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 014-4h9a5 5 0 010 10H7a4 4 0 01-4-4zm13-8a3 3 0 00-3-3m0 0a3 3 0 00-3 3m3-3v12"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Works Offline</h3>
-                        <p class="text-slate-600">Keep selling even without internet access and sync your work when your connection is back.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_4_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_4_desc') }}</p>
                     </div>
 
                     <!-- Feature 5 -->
@@ -254,8 +290,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 8v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8m18 0l-7.5 5L6 8m15 0a2 2 0 00-2-2H5a2 2 0 00-2 2"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">ARES Integration</h3>
-                        <p class="text-slate-600">Automatically fetch company details from ARES to save time and reduce manual entry errors.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_5_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_5_desc') }}</p>
                     </div>
 
                     <!-- Feature 6 -->
@@ -265,8 +301,8 @@ defineProps({
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4m5 5H6a2 2 0 01-2-2V6a2 2 0 012-2h9l5 5v9a2 2 0 01-2 2z"></path>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-slate-900 mb-2">Invoices & Delivery Notes</h3>
-                        <p class="text-slate-600">Create invoices and delivery notes in a few clicks for faster and more professional order processing.</p>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('welcome.feat_6_title') }}</h3>
+                        <p class="text-slate-600">{{ $t('welcome.feat_6_desc') }}</p>
                     </div>
                 </div>
             </div>
@@ -275,7 +311,7 @@ defineProps({
         <!-- Footer -->
         <footer class="bg-white/70 backdrop-blur border-t border-teal-100/50 py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <p class="text-slate-600"> 2024 Cashier App. Built for modern businesses.</p>
+                <p class="text-slate-600">&copy; {{ $t('welcome.footer') }}</p>
             </div>
         </footer>
     </div>

@@ -3,6 +3,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     customers: Object,
@@ -18,7 +21,7 @@ const customerDisplayName = (customer) => {
 };
 
 const deleteCustomer = (id) => {
-    if (confirm('Are you sure you want to delete this customer?')) {
+    if (confirm(t('customers.delete_confirm'))) {
         form.delete(route('customers.destroy', id));
     }
 };
@@ -35,14 +38,14 @@ const isEmpty = computed(() => props.customers.data.length === 0);
 </script>
 
 <template>
-    <Head title="Customers" />
+    <Head :title="$t('customers.title')" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
-                    <h2 class="text-2xl font-semibold text-slate-900">Customers</h2>
-                    <p class="mt-1 text-sm text-slate-600">Manage your customer records, legal IDs, and contact details.</p>
+                    <h2 class="text-2xl font-semibold text-slate-900">{{ $t('customers.title') }}</h2>
+                    <p class="mt-1 text-sm text-slate-600">{{ $t('customers.description') }}</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <div class="relative w-full sm:w-80">
@@ -53,7 +56,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                             id="customer-search"
                             v-model="search"
                             type="text"
-                            placeholder="Search by company, ID, VAT, or contact"
+                            :placeholder="$t('customers.search_placeholder')"
                             class="h-10 pl-10 pr-3 text-sm"
                         />
                     </div>
@@ -64,7 +67,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Create Customer
+                        {{ $t('customers.create') }}
                     </Link>
                 </div>
             </div>
@@ -77,16 +80,14 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                         <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-4a3 3 0 00-3-3H10a3 3 0 00-3 3v4m10 0H7" />
                         </svg>
-                        <h3 class="mt-3 text-base font-semibold text-slate-900">{{ isSearchActive ? 'No matching customers' : 'No customers yet' }}</h3>
-                        <p class="mt-1 text-sm text-slate-500">
-                            {{ isSearchActive ? 'Try a broader search term.' : 'Create your first customer to keep billing details organized.' }}
-                        </p>
+                        <h3 class="mt-3 text-base font-semibold text-slate-900">{{ isSearchActive ? $t('customers.no_matching') : $t('customers.no_customers_yet') }}</h3>
+                            {{ isSearchActive ? $t('customers.try_broader') : $t('customers.create_first') }}
                         <Link
                             v-if="!isSearchActive"
                             :href="route('customers.create')"
                             class="mt-5 inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-teal-700"
                         >
-                            Create Customer
+                            {{ $t('customers.create') }}
                         </Link>
                     </div>
 
@@ -95,11 +96,11 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                             <table class="min-w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Company</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Company ID</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Contact</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Location</th>
-                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Actions</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('customers.company') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('customers.company_id') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('customers.contact') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('customers.location') }}</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('customers.actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -110,7 +111,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                     >
                                         <td class="px-5 py-4 align-top">
                                             <p class="text-sm font-semibold text-slate-900">{{ customer.company_name }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-500">VAT: {{ customer.vat_id || 'N/A' }}</p>
+                                            <p class="mt-0.5 text-xs text-slate-500">{{ $t('customers.vat') }}: {{ customer.vat_id || $t('customers.na') }}</p>
                                         </td>
                                         <td class="px-5 py-4 align-top">
                                             <span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
@@ -119,8 +120,8 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                         </td>
                                         <td class="px-5 py-4 align-top text-sm text-slate-700">
                                             <p class="font-medium text-slate-900">{{ customerDisplayName(customer) }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-500">{{ customer.email || 'No email' }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-500">{{ customer.phone_number || 'No phone' }}</p>
+                                            <p class="mt-0.5 text-xs text-slate-500">{{ customer.email || $t('customers.no_email') }}</p>
+                                            <p class="mt-0.5 text-xs text-slate-500">{{ customer.phone_number || $t('customers.no_phone') }}</p>
                                         </td>
                                         <td class="px-5 py-4 align-top text-sm text-slate-700">
                                             {{ customer.city }}, {{ customer.country_code }}
@@ -130,7 +131,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                                 <Link
                                                     :href="route('customers.show', customer.id)"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100"
-                                                    title="View"
+                                                    :title="$t('customers.view')"
                                                 >
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -140,7 +141,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                                 <Link
                                                     :href="route('customers.edit', customer.id)"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 transition-colors hover:bg-amber-100"
-                                                    title="Edit"
+                                                    :title="$t('customers.edit')"
                                                 >
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -149,7 +150,7 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                                 <button
                                                     @click="deleteCustomer(customer.id)"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition-colors hover:bg-rose-100"
-                                                    title="Delete"
+                                                    :title="$t('customers.delete')"
                                                 >
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -169,18 +170,18 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                         <h3 class="text-sm font-semibold text-slate-900">{{ customer.company_name }}</h3>
                                         <p class="mt-1 text-xs text-slate-500">{{ customerDisplayName(customer) }}</p>
                                         <span class="mt-1 inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
-                                            ID: {{ customer.company_id }}
+                                            {{ $t('customers.id') }}: {{ customer.company_id }}
                                         </span>
                                     </div>
                                 </div>
                                 <div class="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600">
                                     <div>
-                                        <p class="text-slate-500">Email</p>
-                                        <p class="mt-1 font-medium">{{ customer.email || 'No email' }}</p>
+                                        <p class="text-slate-500">{{ $t('customers.email') }}</p>
+                                        <p class="mt-1 font-medium">{{ customer.email || $t('customers.no_email') }}</p>
                                     </div>
                                     <div>
-                                        <p class="text-slate-500">Phone</p>
-                                        <p class="mt-1 font-medium">{{ customer.phone_number || 'No phone' }}</p>
+                                        <p class="text-slate-500">{{ $t('customers.phone') }}</p>
+                                        <p class="mt-1 font-medium">{{ customer.phone_number || $t('customers.no_phone') }}</p>
                                     </div>
                                 </div>
                                 <div class="mt-4 grid grid-cols-3 gap-2">
@@ -188,19 +189,19 @@ const isEmpty = computed(() => props.customers.data.length === 0);
                                         :href="route('customers.show', customer.id)"
                                         class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-700"
                                     >
-                                        View
+                                        {{ $t('customers.view') }}
                                     </Link>
                                     <Link
                                         :href="route('customers.edit', customer.id)"
                                         class="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-medium text-amber-700"
                                     >
-                                        Edit
+                                        {{ $t('customers.edit') }}
                                     </Link>
                                     <button
                                         @click="deleteCustomer(customer.id)"
                                         class="inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-2 py-2 text-xs font-medium text-rose-700"
                                     >
-                                        Delete
+                                        {{ $t('customers.delete') }}
                                     </button>
                                 </div>
                             </article>

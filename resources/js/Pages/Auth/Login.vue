@@ -31,11 +31,11 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head :title="$t('auth.login')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
-            <p class="mt-1 text-sm text-slate-600">Sign in to continue managing your store.</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.welcome_back') }}</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ $t('auth.sign_in_continue') }}</p>
         </div>
 
         <div v-if="status" class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
@@ -44,7 +44,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.email')" />
 
                 <TextInput
                     id="email"
@@ -60,7 +60,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.password')" />
 
                 <TextInput
                     id="password"
@@ -77,9 +77,7 @@ const submit = () => {
             <div class="mt-4 block">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" class="text-teal-600 focus:ring-teal-500" />
-                    <span class="ms-2 text-sm text-slate-600"
-                        >Remember me</span
-                    >
+                    <span class="ms-2 text-sm text-slate-600">{{ $t('auth.remember_me') }}</span>
                 </label>
             </div>
 
@@ -89,7 +87,7 @@ const submit = () => {
                     :href="route('password.request')"
                     class="rounded-md text-sm text-slate-600 underline decoration-teal-200 underline-offset-4 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 >
-                    Forgot your password?
+                    {{ $t('auth.forgot_password') }}
                 </Link>
 
                 <PrimaryButton
@@ -97,7 +95,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Log in
+                    {{ $t('auth.login') }}
                 </PrimaryButton>
             </div>
         </form>

@@ -148,6 +148,7 @@ class BillController extends Controller
                 'bank_account' => $supplier?->bank_account,
                 'email' => $supplier?->email,
                 'phone_number' => $supplier?->phone_number,
+                'subject_type' => $supplier?->subject_type,
             ],
             'customer' => (object) [
                 'company_name' => $bill->customer?->company_name,

@@ -23,19 +23,17 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Forgot Password" />
+        <Head :title="$t('auth.forgot_password_title')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Reset your password</h1>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.forgot_password_heading') }}</h1>
             <p class="mt-1 text-sm text-slate-600">
-                Enter your email and we will send you a secure reset link.
+                {{ $t('auth.enter_email_link') }}
             </p>
         </div>
 
         <div class="mb-4 text-sm text-slate-600">
-            Forgot your password? No problem. Just let us know your email
-            address and we will email you a password reset link that will allow
-            you to choose a new one.
+            {{ $t('auth.forgot_password_desc') }}
         </div>
 
         <div
@@ -47,7 +45,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.email')" />
 
                 <TextInput
                     id="email"
@@ -67,7 +65,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Email Password Reset Link
+                    {{ $t('auth.email_password_reset_link') }}
                 </PrimaryButton>
             </div>
         </form>

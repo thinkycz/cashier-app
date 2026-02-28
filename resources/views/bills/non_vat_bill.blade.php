@@ -24,20 +24,20 @@ $formatCurrency = static fn (float $value): string => number_format($value, 2, '
                 <td class="text-center text-slate-700" colspan="100%">{{ $bill->supplier->zip }} {{ $bill->supplier->city }}</td>
             </tr>
             <tr>
-                <td class="text-center text-slate-700" colspan="100%">IČ: {{ $bill->supplier->company_id }}</td>
+                <td class="text-center text-slate-700" colspan="100%">{{ __('Company ID') }}: {{ $bill->supplier->company_id }}</td>
             </tr>
 
             <tr class="border-b border-teal-200 bg-teal-50/70">
-                <td class="px-1 py-1.5 font-semibold text-teal-900" colspan="2">Účtenka č.</td>
+                <td class="px-1 py-1.5 font-semibold text-teal-900" colspan="2">{{ __('Receipt no.') }}</td>
                 <td class="px-1 py-1.5 text-right font-semibold text-teal-900" colspan="2">{{ $bill->number }}</td>
             </tr>
             <tr class="border-b border-teal-100">
-                <td class="px-1 py-1.5 text-slate-600" colspan="2">Datum a čas</td>
+                <td class="px-1 py-1.5 text-slate-600" colspan="2">{{ __('Date and time') }}</td>
                 <td class="px-1 py-1.5 text-right text-slate-700" colspan="2">{{ $bill->created_at?->format('d.m.Y H:i') }}</td>
             </tr>
             <tr class="bg-slate-50">
-                <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700" colspan="2">Položka</td>
-                <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700" colspan="2">Celkem</td>
+                <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700" colspan="2">{{ __('Item') }}</td>
+                <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700" colspan="2">{{ __('Total') }}</td>
             </tr>
         </thead>
         <tbody>
@@ -51,7 +51,7 @@ $formatCurrency = static fn (float $value): string => number_format($value, 2, '
             </tr>
             @endforeach
             <tr class="border-y-2 border-teal-700 bg-teal-50/70">
-                <td class="px-1 py-1.5 text-left font-semibold text-teal-900" colspan="2">Celkem k úhradě</td>
+                <td class="px-1 py-1.5 text-left font-semibold text-teal-900" colspan="2">{{ __('Total to pay') }}</td>
                 <td class="px-1 py-1.5 text-right text-base font-semibold text-teal-900" colspan="2">{{ $formatCurrency($bill->total_price) }}</td>
             </tr>
         </tbody>

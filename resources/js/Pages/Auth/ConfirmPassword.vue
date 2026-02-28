@@ -19,21 +19,20 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Confirm Password" />
+        <Head :title="$t('auth.confirm_password_title')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Confirm your password</h1>
-            <p class="mt-1 text-sm text-slate-600">This secure action requires password confirmation.</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.confirm_password_heading') }}</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ $t('auth.secure_action_requires') }}</p>
         </div>
 
         <div class="mb-4 text-sm text-slate-600">
-            This is a secure area of the application. Please confirm your
-            password before continuing.
+            {{ $t('auth.secure_area') }}
         </div>
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.password')" />
                 <TextInput
                     id="password"
                     type="password"
@@ -52,7 +51,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Confirm
+                    {{ $t('auth.confirm') }}
                 </PrimaryButton>
             </div>
         </form>

@@ -3,6 +3,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     transactions: Object,
@@ -62,10 +65,10 @@ const normalizeStatuses = (rawStatuses) => {
 };
 
 const customerDisplayName = (customer) => {
-    if (!customer) return 'No customer';
+    if (!customer) return t('bills.not_provided');
 
     const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
-    return fullName || customer.company_name || 'No customer';
+    return fullName || customer.company_name || t('bills.not_provided');
 };
 
 const search = ref(props.filters?.search || '');
@@ -148,14 +151,14 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
 </script>
 
 <template>
-    <Head title="Bills" />
+    <Head :title="$t('bills.title')" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
-                    <h2 class="text-2xl font-semibold text-slate-900">Bills</h2>
-                    <p class="mt-1 text-sm text-slate-600">Review transaction history, customer links, and billing totals.</p>
+                    <h2 class="text-2xl font-semibold text-slate-900">{{ $t('bills.title') }}</h2>
+                    <p class="mt-1 text-sm text-slate-600">{{ $t('bills.description') }}</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <div class="relative w-full sm:w-80">
@@ -166,7 +169,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             id="bill-search"
                             v-model="search"
                             type="text"
-                            placeholder="Search by bill ID or customer"
+                            :placeholder="$t('bills.search_placeholder')"
                             class="h-10 pl-10 pr-3 text-sm"
                         />
                     </div>
@@ -175,8 +178,8 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             v-for="option in statusOptions"
                             :key="option.value"
                             type="button"
-                            :title="option.label"
-                            :aria-label="option.label"
+                            :title="$t('bills.status_' + option.value)"
+                            :aria-label="$t('bills.status_' + option.value)"
                             :aria-pressed="isStatusSelected(option.value)"
                             :class="[
                                 'inline-flex h-10 w-12 items-center justify-center rounded-md border transition-colors',
@@ -199,10 +202,10 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <h3 class="mt-3 text-base font-semibold text-slate-900">
-                            {{ isFiltering ? 'No matching bills' : 'No bills yet' }}
+                            {{ isFiltering ? $t('bills.no_matching') : $t('bills.no_bills_yet') }}
                         </h3>
                         <p class="mt-1 text-sm text-slate-500">
-                            {{ isFiltering ? 'Try a different search or status selection.' : 'Bills will appear here once transactions are created.' }}
+                            {{ isFiltering ? $t('bills.try_different') : $t('bills.bills_will_appear') }}
                         </p>
                     </div>
 
@@ -211,12 +214,12 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                             <table class="min-w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Bill ID</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Customer</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Date</th>
-                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Total</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Status</th>
-                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Actions</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.bill_id') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.customer') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.date') }}</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.total') }}</th>
+                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.status') }}</th>
+                                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -237,7 +240,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                         </td>
                                         <td class="px-5 py-4 text-right align-top">
                                             <p class="text-sm font-semibold text-slate-900">{{ formatPrice(transaction.total) }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-500">Subtotal {{ formatPrice(transaction.subtotal) }}</p>
+                                            <p class="mt-0.5 text-xs text-slate-500">{{ $t('bills.subtotal') }} {{ formatPrice(transaction.subtotal) }}</p>
                                         </td>
                                         <td class="px-5 py-4 align-top">
                                             <span
@@ -245,7 +248,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                                 class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium capitalize"
                                             >
                                                 <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
-                                                {{ transaction.status }}
+                                                {{ $t('bills.status_' + transaction.status) }}
                                             </span>
                                         </td>
                                         <td class="px-5 py-4 align-top">
@@ -253,7 +256,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                                 <Link
                                                     :href="route('bills.show', transaction.id)"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100"
-                                                    title="View bill"
+                                                    :title="$t('bills.view_bill')"
                                                 >
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -282,16 +285,16 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                         :class="getStatusColor(transaction.status)"
                                         class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
                                     >
-                                        {{ transaction.status }}
+                                        {{ $t('bills.status_' + transaction.status) }}
                                     </span>
                                 </div>
                                 <div class="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600">
                                     <div>
-                                        <p class="text-slate-500">Date</p>
+                                        <p class="text-slate-500">{{ $t('bills.date') }}</p>
                                         <p class="mt-1 font-medium">{{ formatDate(transaction.created_at) }}</p>
                                     </div>
                                     <div>
-                                        <p class="text-slate-500">Total</p>
+                                        <p class="text-slate-500">{{ $t('bills.total') }}</p>
                                         <p class="mt-1 font-semibold text-slate-900">{{ formatPrice(transaction.total) }}</p>
                                     </div>
                                 </div>
@@ -299,7 +302,7 @@ const isEmpty = computed(() => props.transactions.data.length === 0);
                                     :href="route('bills.show', transaction.id)"
                                     class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
                                 >
-                                    View Bill
+                                    {{ $t('bills.view_bill_btn') }}
                                 </Link>
                             </article>
                         </div>

@@ -18,8 +18,10 @@ import {
 } from '@/offline/receiptRepository';
 import { runSync } from '@/offline/syncEngine';
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
 
 const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
+const { t } = useI18n();
 
 const cart = useCartStore();
 const DEFAULT_MANUAL_VAT_RATE = 21;
@@ -208,7 +210,7 @@ const cartItemsNewestFirst = computed(() => {
 });
 
 const activeReceiptLabel = computed(() => {
-    return cart.currentTransaction?.transaction_id || 'No active receipt';
+    return cart.currentTransaction?.transaction_id || t('dashboard.no_active_receipt');
 });
 
 const hasActiveAdjustment = computed(() => {
@@ -217,10 +219,10 @@ const hasActiveAdjustment = computed(() => {
 
 const adjustmentChipText = computed(() => {
     if (!hasActiveAdjustment.value) {
-        return 'No adjustment';
+        return t('dashboard.no_adjustment');
     }
 
-    const label = cart.adjustment.type === 'discount' ? 'Discount' : 'Surcharge';
+    const label = cart.adjustment.type === 'discount' ? t('dashboard.discount') : t('dashboard.surcharge');
     return `${label} ${formatPercent(cart.adjustment.percent)}`;
 });
 
@@ -305,7 +307,7 @@ const openEditItemModal = (item) => {
     editingItemKey.value = itemKey;
     editItemError.value = '';
     editItemForm.value = {
-        name: String(item.product?.name || '').trim() || 'Unknown product',
+        name: String(item.product?.name || '').trim() || t('dashboard.unknown_product'),
         vatRate: clampNonNegativeDecimal(item.vat_rate ?? DEFAULT_MANUAL_VAT_RATE),
         packages: clampPositiveInteger(item.packages),
         quantity: clampPositiveInteger(item.quantity),
@@ -316,13 +318,13 @@ const openEditItemModal = (item) => {
 
 const applyEditItem = () => {
     if (!editingItemKey.value) {
-        editItemError.value = 'Polozka nebyla nalezena.';
+        editItemError.value = t('dashboard.edit_item_not_found');
         return;
     }
 
     const normalizedName = String(editItemForm.value.name || '').trim();
     if (!normalizedName) {
-        editItemError.value = 'Nazev polozky je povinny.';
+        editItemError.value = t('dashboard.edit_item_name_required');
         return;
     }
 
@@ -348,7 +350,7 @@ const applyEditItem = () => {
     });
 
     if (!wasUpdated) {
-        editItemError.value = 'Polozku se nepodarilo upravit.';
+        editItemError.value = t('dashboard.edit_item_failed');
         return;
     }
 
@@ -395,17 +397,17 @@ const checkoutWarningMessage = computed(() => {
         return '';
     }
 
-    return `Paid amount is ${formatPrice(Math.abs(checkoutChangeAmount.value))} less than total.`;
+    return t('dashboard.checkout_warning_paid_less', { amount: formatPrice(Math.abs(checkoutChangeAmount.value)) });
 });
 
 const checkoutMethodLabel = computed(() => {
     switch (selectedCheckoutMethod.value) {
     case 'cash':
-        return 'Hotove';
+        return t('dashboard.checkout_cash_label');
     case 'card':
-        return 'Kartou';
+        return t('dashboard.checkout_card_label');
     case 'order':
-        return 'Objednavka';
+        return t('dashboard.checkout_order_label');
     default:
         return '';
     }
@@ -414,11 +416,11 @@ const checkoutMethodLabel = computed(() => {
 const checkoutSubmitButtonLabel = computed(() => {
     switch (selectedCheckoutMethod.value) {
     case 'card':
-        return 'Zaplatit kartou';
+        return t('dashboard.checkout_submit_card');
     case 'order':
-        return 'Vystavit objednavku';
+        return t('dashboard.checkout_submit_order');
     default:
-        return 'Vystavit uctenku';
+        return t('dashboard.checkout_submit_receipt');
     }
 });
 
@@ -497,7 +499,7 @@ const fetchProductsPage = async ({ search = searchQuery.value, page = 1 } = {}) 
             return;
         }
 
-        productsError.value = 'Unable to load products right now. Showing last known results.';
+        productsError.value = t('dashboard.products_load_error');
     } finally {
         if (requestId === productRequestSequence.value) {
             isLoadingProducts.value = false;
@@ -694,12 +696,12 @@ const onCustomerKeydown = (event) => {
 const saveSelectedCustomer = async () => {
     const activeTransaction = cart.currentTransaction;
     if (!activeTransaction?.id) {
-        customerModalError.value = 'Please select an active receipt first.';
+        customerModalError.value = t('dashboard.customer_select_receipt_first');
         return;
     }
 
     if (isLocalTransaction(activeTransaction)) {
-        customerModalError.value = 'Customer assignment requires an online receipt.';
+        customerModalError.value = t('dashboard.customer_assignment_online_only');
         return;
     }
 
@@ -715,7 +717,7 @@ const saveSelectedCustomer = async () => {
     } else if (/^\d{8}$/.test(normalizedIco)) {
         payload.company_id = normalizedIco;
     } else {
-        customerModalError.value = 'Select an existing customer or enter a valid 8-digit IČO.';
+        customerModalError.value = t('dashboard.customer_select_or_enter');
         return;
     }
 
@@ -738,11 +740,11 @@ const saveSelectedCustomer = async () => {
         if (error?.response?.status === 422) {
             const responseMessage = error?.response?.data?.message;
             const firstValidationMessage = Object.values(error?.response?.data?.errors || {})[0]?.[0];
-            customerModalError.value = responseMessage || firstValidationMessage || 'Unable to select customer.';
+            customerModalError.value = responseMessage || firstValidationMessage || t('dashboard.customer_select_unable');
             return;
         }
 
-        customerModalError.value = 'Unable to connect. Please try again.';
+        customerModalError.value = t('dashboard.customer_connect_unable');
     } finally {
         isSavingCustomer.value = false;
     }
@@ -751,12 +753,12 @@ const saveSelectedCustomer = async () => {
 const removeSelectedCustomer = async () => {
     const activeTransaction = cart.currentTransaction;
     if (!activeTransaction?.id) {
-        customerModalError.value = 'Please select an active receipt first.';
+        customerModalError.value = t('dashboard.customer_select_receipt_first');
         return;
     }
 
     if (isLocalTransaction(activeTransaction)) {
-        customerModalError.value = 'Customer assignment requires an online receipt.';
+        customerModalError.value = t('dashboard.customer_assignment_online_only');
         return;
     }
 
@@ -779,11 +781,11 @@ const removeSelectedCustomer = async () => {
         closeCustomerDialog();
     } catch (error) {
         if (error?.response?.status === 422) {
-            customerModalError.value = error?.response?.data?.message || 'Unable to remove customer.';
+            customerModalError.value = error?.response?.data?.message || t('dashboard.customer_remove_unable');
             return;
         }
 
-        customerModalError.value = 'Unable to connect. Please try again.';
+        customerModalError.value = t('dashboard.customer_connect_unable');
     } finally {
         isSavingCustomer.value = false;
     }
@@ -893,10 +895,10 @@ const onManualProductKeydown = (event) => {
 };
 
 const customerDisplayName = (customer) => {
-    if (!customer) return 'No customer selected';
+    if (!customer) return t('dashboard.no_customer_selected');
 
     const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
-    return fullName || customer.company_name || 'No customer selected';
+    return fullName || customer.company_name || t('dashboard.no_customer_selected');
 };
 
 const handleDocumentClick = (event) => {
@@ -1297,17 +1299,17 @@ const buildOfflinePrintBody = (receipt, supplier) => {
         <thead style="border-bottom:1px solid rgb(15 118 110);">
             ${supplierRows}
             <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
-                <td colspan="100%" style="padding:.375rem 0;text-align:center;font-weight:600;color:rgb(19 78 74);">Objednavka</td>
+                <td colspan="100%" style="padding:.375rem 0;text-align:center;font-weight:600;color:rgb(19 78 74);">${t('bill.order')}</td>
             </tr>
             <tr style="background:rgb(248 250 252);">
-                <td style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Polozka</td>
-                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem</td>
+                <td style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">${t('bill.item')}</td>
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">${t('bill.total')}</td>
             </tr>
         </thead>
         <tbody>
             ${itemRows}
             <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
-                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">Celkem k uhrade</td>
+                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">${t('bill.total_to_pay')}</td>
                 <td style="padding:.375rem .25rem;text-align:right;font-size:1rem;font-weight:600;color:rgb(19 78 74);">${formatPrice(receipt.total)}</td>
             </tr>
         </tbody>`;
@@ -1335,15 +1337,15 @@ const buildOfflinePrintBody = (receipt, supplier) => {
             const vatData = receipt.vat_summary[vatLabel] || { base: 0, vat: 0, total: 0 };
             return `
             <tr>
-                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">Zaklad DPH ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">${t('bill.vat_base')} ${vatLabel}</td>
                 <td colspan="2" style="padding:.25rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPrice(vatData.base)}</td>
             </tr>
             <tr>
-                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">DPH ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">${t('bill.vat')} ${vatLabel}</td>
                 <td colspan="2" style="padding:.25rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPrice(vatData.vat)}</td>
             </tr>
             <tr style="border-bottom:1px solid rgb(241 245 249);">
-                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">Celkem ${vatLabel}</td>
+                <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">${t('bill.total_vat')} ${vatLabel}</td>
                 <td colspan="2" style="padding:.25rem .25rem;text-align:right;font-weight:500;color:rgb(30 41 59);">${formatPrice(vatData.total)}</td>
             </tr>`;
         }).join('') : '';
@@ -1352,28 +1354,28 @@ const buildOfflinePrintBody = (receipt, supplier) => {
         <thead style="border-bottom:1px solid rgb(15 118 110);">
             ${supplierRows}
             <tr style="border-bottom:1px solid rgb(153 246 228);background:rgb(240 253 250 / .7);">
-                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;color:rgb(19 78 74);">Uctenka c.</td>
+                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;color:rgb(19 78 74);">${t('bill.receipt_no')}</td>
                 <td colspan="2" style="padding:.375rem .25rem;text-align:right;font-weight:600;color:rgb(19 78 74);">${escapeHtml(receipt.number)}</td>
             </tr>
             <tr style="border-bottom:1px solid rgb(204 251 241);">
-                <td colspan="2" style="padding:.375rem .25rem;color:rgb(71 85 105);">Datum a cas</td>
+                <td colspan="2" style="padding:.375rem .25rem;color:rgb(71 85 105);">${t('bill.date_time')}</td>
                 <td colspan="2" style="padding:.375rem .25rem;text-align:right;color:rgb(51 65 85);">${formatPreviewDate(receipt.created_at)}</td>
             </tr>
             <tr style="background:rgb(248 250 252);">
-                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Polozka</td>
-                ${isVatPayer.value ? '<td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">DPH</td>' : ''}
-                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem${isVatPayer.value ? ' s DPH' : ''}</td>
+                <td colspan="2" style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">${t('bill.item')}</td>
+                ${isVatPayer.value ? `<td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">${t('bill.vat')}</td>` : ''}
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">${isVatPayer.value ? t('bill.total_with_vat') : t('bill.total')}</td>
             </tr>
         </thead>
         <tbody>
             ${itemRows}
             ${isVatPayer.value ? `
             <tr style="border-top:2px solid rgb(15 118 110);">
-                <td colspan="100%" style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(17 94 89);">DPH rekapitulace</td>
+                <td colspan="100%" style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(17 94 89);">${t('bill.vat_recap')}</td>
             </tr>
             ${vatRows}` : ''}
             <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
-                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">Celkem k uhrade</td>
+                <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">${t('bill.total_to_pay')}</td>
                 <td colspan="3" style="padding:.375rem .25rem;text-align:right;font-size:1rem;font-weight:600;color:rgb(19 78 74);">${formatPrice(receipt.total)}</td>
             </tr>
         </tbody>`;
@@ -1588,7 +1590,7 @@ const performCheckout = async (checkoutMethod) => {
             items: cloneCartItemsPayload().map((item) => ({
                 line_number: item.line_number,
                 product_id: item.product_id,
-                product_name: item.product?.name || 'Unknown product',
+                product_name: item.product?.name || t('dashboard.unknown_product'),
                 packages: item.packages,
                 quantity: item.quantity,
                 base_unit_price: item.base_unit_price,
@@ -1643,13 +1645,13 @@ const submitCheckout = async () => {
 
     const activeTransaction = cart.currentTransaction;
     if (!activeTransaction?.id || cart.items.length === 0) {
-        checkoutModalError.value = 'Please select an active receipt with at least one item.';
+        checkoutModalError.value = t('dashboard.receipt_checkout_select_items');
         return;
     }
 
     const checkoutMethod = selectedCheckoutMethod.value;
     if (!checkoutMethod) {
-        checkoutModalError.value = 'Select a checkout method and try again.';
+        checkoutModalError.value = t('dashboard.receipt_checkout_select_method');
         return;
     }
 
@@ -1667,10 +1669,10 @@ const submitCheckout = async () => {
 
         if (checkoutResult?.previewMode === 'offline' && checkoutResult?.offlineReceiptId) {
             await openOfflinePreviewById(checkoutResult.offlineReceiptId);
-            checkoutInfoMessage.value = 'Receipt completed offline and opened as draft preview.';
+            checkoutInfoMessage.value = t('dashboard.receipt_completed_offline');
         }
     } catch {
-        checkoutModalError.value = 'Unable to checkout. Please try again.';
+        checkoutModalError.value = t('dashboard.receipt_checkout_unable');
     }
 };
 
@@ -1688,20 +1690,20 @@ const receiptDisplayTotal = (transaction) => {
 
 const receiptSyncLabel = (transaction) => {
     if (!isLocalTransaction(transaction)) {
-        return 'Synced';
+        return t('dashboard.receipt_synced');
     }
 
     switch (transaction?.sync_status) {
     case 'pending':
-        return 'Pending sync';
+        return t('dashboard.receipt_pending_sync');
     case 'syncing':
-        return 'Syncing';
+        return t('dashboard.receipt_syncing');
     case 'failed':
-        return 'Sync failed';
+        return t('dashboard.receipt_sync_failed');
     case 'synced':
-        return 'Synced';
+        return t('dashboard.receipt_synced');
     default:
-        return 'Local draft';
+        return t('dashboard.receipt_local_draft');
     }
 };
 
@@ -1909,7 +1911,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="openAdjustmentDialog"
                     >
-                        Discount / Surcharge
+                        {{ $t('dashboard.discount_surcharge') }}
                     </button>
                     <button
                         type="button"
@@ -1917,7 +1919,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-teal-100 bg-teal-50/60 px-4 py-2 text-sm font-medium text-teal-700 transition-all duration-200 hover:-translate-y-px hover:bg-teal-100/70 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="openCustomerDialog"
                     >
-                        Select Customer
+                        {{ $t('dashboard.select_customer') }}
                     </button>
                     <button
                         type="button"
@@ -1925,7 +1927,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="createNewTransaction"
                     >
-                        {{ isCreatingReceipt ? 'Creating...' : 'New Receipt' }}
+                        {{ isCreatingReceipt ? $t('dashboard.creating') : $t('dashboard.new_receipt') }}
                     </button>
                 </div>
             </div>
@@ -1935,7 +1937,7 @@ onBeforeUnmount(() => {
             <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
                 <section class="flex h-full flex-col overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/60">
                     <div class="bg-gradient-to-r from-teal-700 to-cyan-700 px-5 py-4 text-white">
-                        <p class="text-xs uppercase tracking-wide text-cyan-100">Current Total</p>
+                        <p class="text-xs uppercase tracking-wide text-cyan-100">{{ $t('dashboard.current_total') }}</p>
                         <p class="mt-1 text-3xl font-semibold">{{ formatPrice(cart.total) }}</p>
                         <p
                             class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -1948,12 +1950,12 @@ onBeforeUnmount(() => {
                     <div class="flex min-h-0 flex-1 flex-col">
                         <div class="space-y-3 px-4 pt-4">
                             <div ref="manualInputContainerRef" class="relative">
-                                <label class="mb-1.5 block text-xs font-medium text-slate-600">Product Name</label>
+                                <label class="mb-1.5 block text-xs font-medium text-slate-600">{{ $t('dashboard.product_name') }}</label>
                                 <input
                                     ref="productNameInputRef"
                                     v-model="manualProductName"
                                     type="text"
-                                    placeholder="Product Name"
+                                    :placeholder="$t('dashboard.product_name')"
                                     role="combobox"
                                     autocomplete="off"
                                     :aria-expanded="showManualAutocomplete"
@@ -1996,7 +1998,7 @@ onBeforeUnmount(() => {
 
                             <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
                                 <div>
-                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Packages</label>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">{{ $t('dashboard.packages') }}</label>
                                     <input
                                         ref="packagesInputRef"
                                         v-model.number="manualPackages"
@@ -2007,7 +2009,7 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Quantity</label>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">{{ $t('dashboard.quantity') }}</label>
                                     <input
                                         ref="quantityInputRef"
                                         v-model.number="manualQuantity"
@@ -2018,7 +2020,7 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">Base Price</label>
+                                    <label class="mb-1.5 block text-xs font-medium text-slate-600">{{ $t('dashboard.base_price') }}</label>
                                     <input
                                         ref="priceInputRef"
                                         v-model.number="manualPrice"
@@ -2035,8 +2037,8 @@ onBeforeUnmount(() => {
                                     :disabled="!canAddManualItem"
                                     class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-transparent bg-teal-600 text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                                     @click="addManualBillItem"
-                                    aria-label="Add Item"
-                                    title="Add Item"
+                                    :aria-label="$t('dashboard.add_to_cart')"
+                                    :title="$t('dashboard.add_to_cart')"
                                 >
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                         <path d="M10 4a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 0110 4z" />
@@ -2047,12 +2049,12 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-4 px-4">
-                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Bill Items</h4>
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.bill_items') }}</h4>
                         </div>
 
                         <div class="mt-3 min-h-0 flex-1 max-h-[34rem] space-y-3 overflow-y-auto px-4 pb-4">
                             <article v-if="cart.items.length === 0" class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
-                                Cart is empty
+                                {{ $t('dashboard.cart_is_empty') }}
                             </article>
 
                             <article
@@ -2061,7 +2063,7 @@ onBeforeUnmount(() => {
                                 class="min-h-24 cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100/70 transition-colors hover:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                                 role="button"
                                 tabindex="0"
-                                :aria-label="`Upravit polozku ${item.product?.name || 'Unknown product'}`"
+                                :aria-label="`Upravit polozku ${item.product?.name || t('dashboard.unknown_product')}`"
                                 @click="openEditItemModal(item)"
                                 @keydown.enter.prevent="openEditItemModal(item)"
                                 @keydown.space.prevent="openEditItemModal(item)"
@@ -2069,7 +2071,7 @@ onBeforeUnmount(() => {
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <div class="flex items-center gap-1.5">
-                                            <p class="text-sm font-semibold text-slate-900">#{{ item.line_number || (cart.items.length - index) }} - {{ item.product?.name || 'Unknown product' }}</p>
+                                            <p class="text-sm font-semibold text-slate-900">#{{ item.line_number || (cart.items.length - index) }} - {{ item.product?.name || $t('dashboard.unknown_product') }}</p>
                                         </div>
                                     </div>
                                   <div class="flex items-start justify-between gap-1">
@@ -2079,21 +2081,21 @@ onBeforeUnmount(() => {
 
                                 <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
                                     <div>
-                                        <p class="text-slate-500">Packages</p>
+                                        <p class="text-slate-500">{{ $t('dashboard.packages') }}</p>
                                         <p class="mt-1 font-medium text-slate-900">{{ item.packages || 1 }}</p>
                                     </div>
                                     <div>
-                                        <p class="text-slate-500">Qty</p>
+                                        <p class="text-slate-500">{{ $t('dashboard.qty') }}</p>
                                         <p class="mt-1 font-medium text-slate-900">{{ item.quantity }}</p>
                                     </div>
                                     <div>
-                                        <p class="text-slate-500">Unit</p>
+                                        <p class="text-slate-500">{{ $t('dashboard.unit') }}</p>
                                         <p class="mt-1 font-medium text-slate-900">{{ formatPrice(item.unit_price) }}</p>
                                         <p
                                             v-if="hasActiveAdjustment"
                                             class="mt-0.5 text-[11px] text-slate-500"
                                         >
-                                            Base {{ formatPrice(item.base_unit_price) }}
+                                            {{ $t('dashboard.base') }} {{ formatPrice(item.base_unit_price) }}
                                         </p>
                                     </div>
                                 </div>
@@ -2112,7 +2114,7 @@ onBeforeUnmount(() => {
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                                 @click="openCheckoutModal('cash')"
                             >
-                                Hotove
+                                {{ $t('dashboard.checkout_cash') }}
                             </button>
                             <button
                                 type="button"
@@ -2120,7 +2122,7 @@ onBeforeUnmount(() => {
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 @click="openCheckoutModal('card')"
                             >
-                                Kartou
+                                {{ $t('dashboard.checkout_card') }}
                             </button>
                             <button
                                 type="button"
@@ -2128,7 +2130,7 @@ onBeforeUnmount(() => {
                                 class="inline-flex items-center justify-center rounded-md border border-transparent bg-cyan-700 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 @click="openCheckoutModal('order')"
                             >
-                                Objednavka
+                                {{ $t('dashboard.checkout_order') }}
                             </button>
                             </div>
                             <div
@@ -2154,19 +2156,19 @@ onBeforeUnmount(() => {
                 <section class="space-y-4">
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
-                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Open Receipts</h4>
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.open_receipts') }}</h4>
                             <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
                                 <span class="inline-flex items-center gap-1.5">
                                     <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                                    Synced
+                                    {{ $t('dashboard.synced') }}
                                 </span>
                                 <span class="inline-flex items-center gap-1.5">
                                     <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                                    Local / Pending
+                                    {{ $t('dashboard.local_pending') }}
                                 </span>
                                 <span class="inline-flex items-center gap-1.5">
                                     <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                                    Failed
+                                    {{ $t('dashboard.failed') }}
                                 </span>
                             </div>
                         </div>
@@ -2227,7 +2229,7 @@ onBeforeUnmount(() => {
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-teal-50 hover:text-teal-700 focus:bg-teal-50 focus:text-teal-700 focus:outline-none"
                                                 @click="setActiveReceipt(transaction)"
                                             >
-                                                Make Active
+                                                {{ $t('dashboard.receipt_action_make_active') }}
                                             </button>
                                             <button
                                                 type="button"
@@ -2235,13 +2237,13 @@ onBeforeUnmount(() => {
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-rose-600 transition duration-150 ease-in-out hover:bg-rose-50 hover:text-rose-700 focus:bg-rose-50 focus:text-rose-700 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                                 @click="deleteReceipt(transaction)"
                                             >
-                                                {{ deletingReceiptId === transaction.id ? 'Deleting...' : 'Delete Bill' }}
+                                                {{ deletingReceiptId === transaction.id ? t('dashboard.receipt_action_deleting') : t('dashboard.receipt_action_delete_bill') }}
                                             </button>
                                         </template>
                                     </Dropdown>
                                 </div>
                             </article>
-                            <p v-if="openReceipts.length === 0" class="text-sm text-slate-500">No open receipts.</p>
+                            <p v-if="openReceipts.length === 0" class="text-sm text-slate-500">{{ $t('dashboard.no_open_receipts') }}</p>
                         </div>
                     </div>
 
@@ -2249,7 +2251,7 @@ onBeforeUnmount(() => {
                         v-if="offlineEnabled && syncQueueReceipts.length > 0"
                         class="rounded-xl border border-amber-200/80 bg-amber-50/70 p-4"
                     >
-                        <h4 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Offline Sync Queue</h4>
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-amber-700">{{ $t('dashboard.offline_sync_queue') }}</h4>
                         <div class="mt-3 space-y-2">
                             <article
                                 v-for="receipt in syncQueueReceipts"
@@ -2266,17 +2268,13 @@ onBeforeUnmount(() => {
                                         type="button"
                                         class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                                         @click="previewQueuedReceipt(receipt)"
-                                    >
-                                        Preview
-                                    </button>
+                                    >{{ $t('dashboard.preview') }}</button>
                                     <button
                                         v-if="receipt.sync_status === 'failed'"
                                         type="button"
                                         class="inline-flex items-center justify-center rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-200"
                                         @click="retryFailedSync(receipt.id)"
-                                    >
-                                        Retry
-                                    </button>
+                                    >{{ $t('dashboard.retry') }}</button>
                                 </div>
                             </article>
                         </div>
@@ -2284,7 +2282,7 @@ onBeforeUnmount(() => {
 
                     <div class="rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/70 to-cyan-50/60 px-4 py-3">
-                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">Find Product</h4>
+                            <h4 class="text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.find_product') }}</h4>
                         </div>
 
                         <div class="space-y-4">
@@ -2296,7 +2294,7 @@ onBeforeUnmount(() => {
                                     <input
                                         v-model="searchQuery"
                                         type="text"
-                                        placeholder="Search products"
+                                        :placeholder="$t('dashboard.search_products')"
                                         class="h-10 w-full rounded-md border border-slate-300 pl-10 pr-3 text-sm text-slate-700 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                                     />
                                 </div>
@@ -2305,7 +2303,7 @@ onBeforeUnmount(() => {
                                     :href="route('products.create')"
                                     class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700"
                                 >
-                                    Create Product
+                                    {{ $t('dashboard.create_product') }}
                                 </Link>
                             </div>
 
@@ -2317,7 +2315,7 @@ onBeforeUnmount(() => {
 
                             <div class="flex items-center justify-between px-4">
                                 <p class="text-xs text-slate-500">
-                                    Showing page {{ productsMeta.current_page }} of {{ productsMeta.last_page }} ({{ productsMeta.total }} products)
+                                    {{ $t('dashboard.pagination_info', { current: productsMeta.current_page, last: productsMeta.last_page, total: productsMeta.total }) }}
                                 </p>
                                 <div class="flex items-center gap-2">
                                     <button
@@ -2326,7 +2324,7 @@ onBeforeUnmount(() => {
                                         class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                         @click="goToProductPage(productsMeta.current_page - 1)"
                                     >
-                                        Prev
+                                        {{ $t('dashboard.prev') }}
                                     </button>
                                     <button
                                         type="button"
@@ -2334,7 +2332,7 @@ onBeforeUnmount(() => {
                                         class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                         @click="goToProductPage(productsMeta.current_page + 1)"
                                     >
-                                        Next
+                                        {{ $t('dashboard.next') }}
                                     </button>
                                 </div>
                             </div>
@@ -2343,11 +2341,11 @@ onBeforeUnmount(() => {
                                 <table class="min-w-full border-collapse">
                                     <thead>
                                         <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
-                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">EAN</th>
-                                            <th v-if="isVatPayer" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
-                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Price</th>
-                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Action</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.product') }}</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.ean') }}</th>
+                                            <th v-if="isVatPayer" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.vat') }}</th>
+                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.price') }}</th>
+                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('dashboard.action') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2368,23 +2366,21 @@ onBeforeUnmount(() => {
                                             </td>
                                             <td class="px-4 py-3 text-right">
                                                 <p class="text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
-                                                <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
+                                                <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('dashboard.incl_vat') }}</p>
                                             </td>
                                             <td class="px-4 py-3 text-right">
                                                 <button
                                                     type="button"
                                                     class="inline-flex items-center rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
                                                     @click="addToCart(product)"
-                                                >
-                                                    Add
-                                                </button>
+                                                >{{ $t('dashboard.add_to_cart') }}</button>
                                             </td>
                                         </tr>
                                         <tr v-if="isLoadingProducts">
-                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">Loading products...</td>
+                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">{{ $t('dashboard.loading_products') }}</td>
                                         </tr>
                                         <tr v-else-if="filteredProducts.length === 0">
-                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">No products found.</td>
+                                            <td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">{{ $t('dashboard.no_products_found') }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -2401,15 +2397,15 @@ onBeforeUnmount(() => {
                                     </div>
                                     <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
                                         <div>
-                                            <p class="text-slate-500">EAN</p>
+                                            <p class="text-slate-500">{{ $t('dashboard.ean') }}</p>
                                             <p class="mt-1 font-mono">{{ product.ean || '-' }}</p>
                                         </div>
                                         <div v-if="isVatPayer">
-                                            <p class="text-slate-500">VAT</p>
+                                            <p class="text-slate-500">{{ $t('dashboard.vat') }}</p>
                                             <p class="mt-1 font-medium">{{ formatVat(product.vat_rate) }}%</p>
                                         </div>
                                         <div>
-                                            <p class="text-slate-500">Price</p>
+                                            <p class="text-slate-500">{{ $t('dashboard.price') }}</p>
                                             <p class="mt-1 font-medium text-slate-900">{{ formatPrice(product.price) }}</p>
                                         </div>
                                     </div>
@@ -2417,12 +2413,10 @@ onBeforeUnmount(() => {
                                         type="button"
                                         class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700"
                                         @click="addToCart(product)"
-                                    >
-                                        Add to Cart
-                                    </button>
+                                    >{{ $t('dashboard.add_to_cart') }}</button>
                                 </article>
-                                <p v-if="isLoadingProducts" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">Loading products...</p>
-                                <p v-else-if="filteredProducts.length === 0" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">No products found.</p>
+                                <p v-if="isLoadingProducts" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">{{ $t('dashboard.loading_products') }}</p>
+                                <p v-else-if="filteredProducts.length === 0" class="rounded-lg border border-slate-200 px-4 py-8 text-center text-sm text-slate-500">{{ $t('dashboard.no_products_found') }}</p>
                             </div>
                         </div>
                     </div>
@@ -2434,8 +2428,8 @@ onBeforeUnmount(() => {
             <div class="p-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-900">Upravit polozku</h3>
-                        <p class="mt-1 text-sm text-slate-500">Upravte detail polozky pro aktivni uctenku.</p>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ $t('dashboard.edit_item_title') }}</h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ $t('dashboard.edit_item_description') }}</p>
                     </div>
                     <button
                         type="button"
@@ -2450,7 +2444,7 @@ onBeforeUnmount(() => {
 
                 <div class="mt-6 space-y-4">
                     <div>
-                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Nazev polozky</label>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.edit_item_name') }}</label>
                         <input
                             v-model="editItemForm.name"
                             type="text"
@@ -2460,7 +2454,7 @@ onBeforeUnmount(() => {
 
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div v-if="isVatPayer">
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Sazba DPH</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.edit_item_vat') }}</label>
                             <input
                                 v-model.number="editItemForm.vatRate"
                                 type="number"
@@ -2470,7 +2464,7 @@ onBeforeUnmount(() => {
                             />
                         </div>
                         <div :class="isVatPayer ? '' : 'md:col-span-2'">
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Cena za MJ</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.edit_item_price') }}</label>
                             <input
                                 v-model.number="editItemForm.basePrice"
                                 type="number"
@@ -2483,7 +2477,7 @@ onBeforeUnmount(() => {
 
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Baliku</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.edit_item_packages') }}</label>
                             <input
                                 v-model.number="editItemForm.packages"
                                 type="number"
@@ -2493,7 +2487,7 @@ onBeforeUnmount(() => {
                             />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Pocet</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.edit_item_quantity') }}</label>
                             <input
                                 v-model.number="editItemForm.quantity"
                                 type="number"
@@ -2513,7 +2507,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-transparent bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700"
                         @click="deleteEditedItem"
                     >
-                        Odstranit polozku
+                        {{ $t('dashboard.edit_item_remove') }}
                     </button>
                     <button
                         type="button"
@@ -2531,7 +2525,7 @@ onBeforeUnmount(() => {
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900">Vystavit uctenku</h3>
-                        <p class="mt-1 text-sm text-slate-500">Zkontrolujte celkovou castku a potvrdte zpusob uhrady.</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ $t('dashboard.checkout_description') }}</p>
                     </div>
                     <button
                         type="button"
@@ -2547,14 +2541,14 @@ onBeforeUnmount(() => {
                 <div class="mt-6 space-y-4">
                     <div class="rounded-lg bg-gradient-to-r from-teal-700 to-cyan-700 px-4 py-4 text-white shadow-sm shadow-teal-200/70">
                         <div class="flex items-end justify-between gap-4">
-                            <p class="text-sm font-medium uppercase tracking-wide text-cyan-100">Celkem</p>
+                            <p class="text-sm font-medium uppercase tracking-wide text-cyan-100">{{ $t('dashboard.checkout_total') }}</p>
                             <p class="text-right text-3xl font-semibold">{{ formatPrice(checkoutTotal) }}</p>
                         </div>
                     </div>
 
                     <div v-if="isCashCheckout" class="space-y-4">
                         <div>
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Zaplaceno</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.checkout_paid') }}</label>
                             <input
                                 ref="cashPaidInputRef"
                                 v-model.number="checkoutPaidAmount"
@@ -2565,7 +2559,7 @@ onBeforeUnmount(() => {
                             />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Vratit</label>
+                            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.checkout_return') }}</label>
                             <div class="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 shadow-sm">
                                 {{ formatPrice(checkoutChangeAmount) }}
                             </div>
@@ -2576,9 +2570,9 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div v-else class="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-                        <p class="text-xs font-medium uppercase tracking-wide text-slate-600">Zpusob platby</p>
+                        <p class="text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.checkout_method') }}</p>
                         <p class="mt-1 text-base font-semibold text-slate-900">{{ checkoutMethodLabel }}</p>
-                        <p class="mt-1.5 text-sm text-slate-600">Potvrdte vystaveni dokladu pro tuto platbu.</p>
+                        <p class="mt-1.5 text-sm text-slate-600">{{ $t('dashboard.checkout_confirm') }}</p>
                     </div>
 
                     <p v-if="checkoutModalError" class="text-sm font-semibold text-rose-600">{{ checkoutModalError }}</p>
@@ -2590,7 +2584,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                         @click="closeCheckoutModal"
                     >
-                        Zrusit
+                        {{ $t('dashboard.cancel') }}
                     </button>
                     <button
                         ref="checkoutConfirmButtonRef"
@@ -2599,7 +2593,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-transparent bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:from-teal-700 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="submitCheckout"
                     >
-                        {{ isCheckingOut ? 'Zpracovani...' : checkoutSubmitButtonLabel }}
+                        {{ isCheckingOut ? $t('dashboard.processing') : checkoutSubmitButtonLabel }}
                     </button>
                 </div>
             </div>
@@ -2609,7 +2603,7 @@ onBeforeUnmount(() => {
             <div class="p-5">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-900">Nahled uctenky</h3>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ $t('dashboard.preview_receipt_title') }}</h3>
                         <p v-if="billPreviewMode === 'offline'" class="mt-1 text-xs font-medium text-amber-700">
                             Offline draft
                         </p>
@@ -2626,7 +2620,7 @@ onBeforeUnmount(() => {
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
                             </svg>
-                            Vytisknout
+                            {{ $t('dashboard.print') }}
                         </button>
                         <button
                             type="button"
@@ -2638,7 +2632,7 @@ onBeforeUnmount(() => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7m0 0v7m0-7L10 14" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h6m-6 0v14h14v-6" />
                             </svg>
-                            Otevrit v novem okne
+                            {{ $t('dashboard.open_new_window') }}
                         </button>
                         <button
                             type="button"
@@ -2656,7 +2650,7 @@ onBeforeUnmount(() => {
                     <iframe
                         ref="billPreviewFrameRef"
                         :src="embeddedBillPreviewUrl"
-                        title="Nahled uctenky"
+                        :title="$t('dashboard.preview_receipt_title')"
                         class="dashboard-preview-frame"
                     />
                 </div>
@@ -2688,7 +2682,7 @@ onBeforeUnmount(() => {
                                 </tr>
                                 <tr class="bg-slate-50">
                                     <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700">Polozka</td>
-                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">Celkem</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">{{ $t('dashboard.checkout_total') }}</td>
                                 </tr>
                             </thead>
 
@@ -2790,13 +2784,13 @@ onBeforeUnmount(() => {
             <div class="p-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-900">Find Customer</h3>
-                        <p class="mt-1 text-sm text-slate-500">Select an existing customer or enter an 8-digit IČO to fetch from ARES.</p>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ $t('dashboard.find_customer_title') }}</h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ $t('dashboard.find_customer_desc') }}</p>
                     </div>
                 </div>
 
                 <div ref="customerInputContainerRef" class="relative mt-5">
-                    <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Company Name or IČO</label>
+                    <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.company_name_or_ico') }}</label>
                     <div class="relative">
                         <input
                             v-model="customerSearch"
@@ -2855,14 +2849,14 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="removeSelectedCustomer"
                     >
-                        Remove Customer
+                        {{ $t('dashboard.remove_customer') }}
                     </button>
                     <button
                         type="button"
                         class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                         @click="closeCustomerDialog"
                     >
-                        Cancel
+                        {{ $t('dashboard.cancel') }}
                     </button>
                     <button
                         type="button"
@@ -2870,7 +2864,7 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
                         @click="saveSelectedCustomer"
                     >
-                        {{ isSavingCustomer ? 'Saving...' : 'Select Customer' }}
+                        {{ isSavingCustomer ? $t('dashboard.saving') : $t('dashboard.select_customer_btn') }}
                     </button>
                 </div>
             </div>
@@ -2878,12 +2872,12 @@ onBeforeUnmount(() => {
 
         <Modal :show="showAdjustmentModal" @close="closeAdjustmentDialog">
             <div class="p-6">
-                <h3 class="text-lg font-semibold text-slate-900">Discount / Surcharge</h3>
-                <p class="mt-1 text-sm text-slate-500">Set one percentage adjustment for this receipt. Item prices are recalculated dynamically.</p>
+                <h3 class="text-lg font-semibold text-slate-900">{{ $t('dashboard.discount_surcharge_title') }}</h3>
+                <p class="mt-1 text-sm text-slate-500">{{ $t('dashboard.discount_surcharge_desc') }}</p>
 
                 <div class="mt-5 space-y-4">
                     <div>
-                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Adjustment type</label>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.adjustment_type') }}</label>
                         <select
                             v-model="adjustmentFormType"
                             class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
@@ -2894,7 +2888,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Percentage</label>
+                        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">{{ $t('dashboard.percentage') }}</label>
                         <input
                             v-model.number="adjustmentFormPercent"
                             type="number"
@@ -2913,14 +2907,14 @@ onBeforeUnmount(() => {
                         class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                         @click="clearAdjustment"
                     >
-                        Clear
+                        {{ $t('dashboard.clear') }}
                     </button>
                     <button
                         type="button"
                         class="inline-flex items-center justify-center rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
                         @click="applyAdjustment"
                     >
-                        Apply
+                        {{ $t('dashboard.apply') }}
                     </button>
                 </div>
             </div>

@@ -22,6 +22,12 @@ Route::get('/ares/company', AresCompanyLookupController::class)
     ->middleware('throttle:60,1')
     ->name('ares.company');
 
+Route::post('/language', function (\Illuminate\Http\Request $request) {
+    $request->validate(['language' => 'required|in:en,cs']);
+    session()->put('locale', $request->language);
+    return back();
+})->name('language.switch');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/products', [DashboardController::class, 'products'])->name('dashboard.products.index');
@@ -36,7 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     Route::resource('products', ProductController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('bills', BillController::class)->only(['index', 'show', 'destroy']);
@@ -44,4 +50,4 @@ Route::middleware('auth')->group(function () {
     Route::post('bills/{bill}/open', [BillController::class, 'open'])->name('bills.open');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

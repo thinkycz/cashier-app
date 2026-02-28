@@ -5,7 +5,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
 const page = usePage();
@@ -27,6 +27,8 @@ const userInitials = computed(() => {
 
     return parts[0][0].toUpperCase();
 });
+
+const currentLocale = computed(() => page.props.locale || 'en');
 </script>
 
 <template>
@@ -54,30 +56,62 @@ const userInitials = computed(() => {
                                     :href="route('dashboard')"
                                     :active="route().current('dashboard')"
                                 >
-                                    Dashboard
+                                    {{ $t('nav.dashboard') }}
                                 </NavLink>
                                 <NavLink
                                     :href="route('products.index')"
                                     :active="route().current('products.*')"
                                 >
-                                    Products
+                                    {{ $t('nav.products') }}
                                 </NavLink>
                                 <NavLink
                                     :href="route('customers.index')"
                                     :active="route().current('customers.*')"
                                 >
-                                    Customers
+                                    {{ $t('nav.customers') }}
                                 </NavLink>
                                 <NavLink
                                     :href="route('bills.index')"
                                     :active="route().current('bills.*')"
                                 >
-                                    Bills
+                                    {{ $t('nav.bills') }}
                                 </NavLink>
                             </div>
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
+                            <!-- Language Dropdown -->
+                            <div class="relative z-50 ms-3">
+                                <Dropdown align="right" width="48">
+                                    <template #trigger>
+                                        <span class="inline-flex">
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-100 bg-white/80 text-xl font-semibold uppercase tracking-wide text-teal-700 shadow-sm transition duration-150 ease-in-out hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+                                                :aria-label="`Current language: ${currentLocale}`"
+                                            >
+                                                {{ currentLocale === 'cs' ? '🇨🇿' : '🇬🇧' }}
+                                            </button>
+                                        </span>
+                                    </template>
+
+                                    <template #content>
+                                        <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'en' }" as="button">
+                                            <span class="inline-flex items-center gap-2">
+                                                <span class="text-lg leading-none">🇬🇧</span>
+                                                <span>English</span>
+                                            </span>
+                                        </DropdownLink>
+                                        <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'cs' }" as="button">
+                                            <span class="inline-flex items-center gap-2">
+                                                <span class="text-lg leading-none">🇨🇿</span>
+                                                <span>Čeština</span>
+                                            </span>
+                                        </DropdownLink>
+                                    </template>
+                                </Dropdown>
+                            </div>
+
                             <!-- Settings Dropdown -->
                             <div class="relative z-50 ms-3">
                                 <Dropdown align="right" width="48">
@@ -98,14 +132,14 @@ const userInitials = computed(() => {
                                         <DropdownLink
                                             :href="route('profile.edit')"
                                         >
-                                            Profile
+                                            {{ $t('nav.profile') }}
                                         </DropdownLink>
                                         <DropdownLink
                                             :href="route('logout')"
                                             method="post"
                                             as="button"
                                         >
-                                            Log Out
+                                            {{ $t('nav.logout') }}
                                         </DropdownLink>
                                     </template>
                                 </Dropdown>
@@ -168,25 +202,25 @@ const userInitials = computed(() => {
                             :href="route('dashboard')"
                             :active="route().current('dashboard')"
                         >
-                            Dashboard
+                            {{ $t('nav.dashboard') }}
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('products.index')"
                             :active="route().current('products.*')"
                         >
-                            Products
+                            {{ $t('nav.products') }}
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('customers.index')"
                             :active="route().current('customers.*')"
                         >
-                            Customers
+                            {{ $t('nav.customers') }}
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('bills.index')"
                             :active="route().current('bills.*')"
                         >
-                            Bills
+                            {{ $t('nav.bills') }}
                         </ResponsiveNavLink>
                     </div>
 
@@ -207,14 +241,14 @@ const userInitials = computed(() => {
 
                         <div class="mt-3 space-y-1">
                             <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
+                                {{ $t('nav.profile') }}
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 :href="route('logout')"
                                 method="post"
                                 as="button"
                             >
-                                Log Out
+                                {{ $t('nav.logout') }}
                             </ResponsiveNavLink>
                         </div>
                     </div>

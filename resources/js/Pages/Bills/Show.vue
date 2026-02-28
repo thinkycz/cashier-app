@@ -4,6 +4,9 @@ import Modal from '@/Components/Modal.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
@@ -20,20 +23,20 @@ const basePreviewUrl = route('bills.preview', props.bill.id);
 const previewUrl = computed(() => `${basePreviewUrl}?document=${selectedPrintDocument.value}`);
 const embeddedPreviewUrl = computed(() => `${previewUrl.value}&embedded=1`);
 const currentPreviewLabel = computed(() => {
-    if (selectedPrintDocument.value === 'invoice') return 'VAT invoice';
-    if (selectedPrintDocument.value === 'non_vat_invoice') return 'Non-VAT Invoice';
-    if (selectedPrintDocument.value === 'delivery_note') return 'Delivery Note';
-    if (selectedPrintDocument.value === 'non_vat_bill') return 'Non-VAT bill';
-    if (selectedPrintDocument.value === 'quotation') return 'Quotation';
-    if (selectedPrintDocument.value === 'vat_bill') return 'VAT bill';
-    return 'Bill';
+    if (selectedPrintDocument.value === 'invoice') return t('bills.vat_invoice');
+    if (selectedPrintDocument.value === 'non_vat_invoice') return t('bills.non_vat_invoice');
+    if (selectedPrintDocument.value === 'delivery_note') return t('bills.delivery_note');
+    if (selectedPrintDocument.value === 'non_vat_bill') return t('bills.non_vat_bill');
+    if (selectedPrintDocument.value === 'quotation') return t('bills.quotation');
+    if (selectedPrintDocument.value === 'vat_bill') return t('bills.vat_bill');
+    return t('bills.title');
 });
 
 const customerDisplayName = (customer) => {
-    if (!customer) return 'No customer';
+    if (!customer) return t('bills.not_provided');
 
     const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim();
-    return fullName || customer.company_name || 'No customer';
+    return fullName || customer.company_name || t('bills.not_provided');
 };
 
 const formatPrice = (price) => {
@@ -147,10 +150,10 @@ const adjustmentLabel = () => {
     const type = adjustmentType();
 
     if (!type) {
-        return Number(props.bill?.discount || 0) > 0 ? 'Legacy discount' : 'Adjustment';
+        return Number(props.bill?.discount || 0) > 0 ? t('bills.legacy_discount') : t('bills.adjustment');
     }
 
-    return type === 'discount' ? 'Discount' : 'Surcharge';
+    return type === 'discount' ? t('bills.discount') : t('bills.surcharge');
 };
 
 const openBill = () => {
@@ -158,7 +161,7 @@ const openBill = () => {
 };
 
 const deleteBill = () => {
-    if (!confirm('Are you sure you want to delete this bill?')) {
+    if (!confirm(t('bills.delete_confirm'))) {
         return;
     }
 
@@ -167,14 +170,14 @@ const deleteBill = () => {
 </script>
 
 <template>
-    <Head :title="`Bill - ${bill.transaction_id}`" />
+    <Head :title="`${$t('bills.transaction')} - ${bill.transaction_id}`" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
-                    <h2 class="text-2xl font-semibold text-slate-900">Bill {{ bill.transaction_id }}</h2>
-                    <p class="mt-1 text-sm text-slate-600">Detailed transaction breakdown, customer info, and totals.</p>
+                    <h2 class="text-2xl font-semibold text-slate-900">{{ $t('bills.transaction') }} {{ bill.transaction_id }}</h2>
+                    <p class="mt-1 text-sm text-slate-600">{{ $t('bills.detailed_breakdown') }}</p>
                 </div>
                 <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                     <Link
@@ -184,7 +187,7 @@ const deleteBill = () => {
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-                        Back to Bills
+                        {{ $t('bills.back_to_bills') }}
                     </Link>
                     <button
                         type="button"
@@ -195,7 +198,7 @@ const deleteBill = () => {
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
-                        {{ openForm.processing ? 'Opening...' : 'Open in Dashboard' }}
+                        {{ openForm.processing ? $t('bills.opening') : $t('bills.open_in_dashboard') }}
                     </button>
                     <button
                         type="button"
@@ -206,7 +209,7 @@ const deleteBill = () => {
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14" />
                         </svg>
-                        {{ deleteForm.processing ? 'Deleting...' : 'Delete' }}
+                        {{ deleteForm.processing ? $t('bills.deleting') : $t('bills.delete') }}
                     </button>
                 </div>
             </div>
@@ -217,24 +220,18 @@ const deleteBill = () => {
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="grid gap-4 px-6 py-5 md:grid-cols-3 md:items-center">
                         <div class="md:col-span-2">
-                            <h1 class="text-xl font-semibold text-slate-900">Transaction {{ bill.transaction_id }}</h1>
+                            <h1 class="text-xl font-semibold text-slate-900">{{ $t('bills.transaction') }} {{ bill.transaction_id }}</h1>
                             <p class="mt-1 text-sm text-slate-500">{{ formatDate(bill.created_at) }}</p>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <span
-                                    :class="getStatusColor(bill.status)"
-                                    class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
-                                >
-                                    {{ bill.status }}
-                                </span>
                                 <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                                    Customer: {{ customerDisplayName(bill.customer) }}
+                                    {{ $t('bills.customer') }}: {{ customerDisplayName(bill.customer) }}
                                 </span>
                             </div>
                         </div>
                         <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
-                            <p class="text-xs uppercase tracking-wide text-slate-500">Total</p>
+                            <p class="text-xs uppercase tracking-wide text-slate-500">{{ $t('bills.total') }}</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
-                            <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
+                            <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(billTotalExcludingVat()) }}</p>
                         </div>
                     </div>
                 </section>
@@ -242,30 +239,30 @@ const deleteBill = () => {
                 <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <article class="relative z-10 rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="rounded-t-xl border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                            <h3 class="text-base font-semibold text-slate-800">Transaction Details</h3>
+                            <h3 class="text-base font-semibold text-slate-800">{{ $t('bills.transaction_details') }}</h3>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Transaction ID</dt>
+                                <dt class="text-slate-500">{{ $t('bills.bill_id') }}</dt>
                                 <dd class="font-medium text-slate-900">{{ bill.transaction_id }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Date</dt>
+                                <dt class="text-slate-500">{{ $t('bills.date') }}</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ formatDate(bill.created_at) }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Status</dt>
+                                <dt class="text-slate-500">{{ $t('bills.status') }}</dt>
                                 <dd>
                                     <span
                                         :class="getStatusColor(bill.status)"
                                         class="inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize"
                                     >
-                                        {{ bill.status }}
+                                        {{ $t('bills.status_' + bill.status) }}
                                     </span>
                                 </dd>
                             </div>
                             <div class="flex items-center justify-between gap-4">
-                                <dt class="text-slate-500">Documents</dt>
+                                <dt class="text-slate-500">{{ $t('bills.documents') }}</dt>
                                 <dd>
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
@@ -276,7 +273,7 @@ const deleteBill = () => {
                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
                                                 </svg>
-                                                Print
+                                                {{ $t('bills.print') }}
                                                 <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
@@ -289,7 +286,7 @@ const deleteBill = () => {
                                             class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                             @click="openPrintPreviewModal('vat_bill')"
                                         >
-                                            VAT bill
+                                            {{ $t('bills.vat_bill') }}
                                         </button>
                                             <button
                                                 v-if="!isVatPayer"
@@ -297,7 +294,7 @@ const deleteBill = () => {
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('non_vat_bill')"
                                             >
-                                                Non-VAT bill
+                                                {{ $t('bills.non_vat_bill') }}
                                             </button>
                                             <button
                                                 v-if="isVatPayer"
@@ -305,7 +302,7 @@ const deleteBill = () => {
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('invoice')"
                                             >
-                                                VAT invoice
+                                                {{ $t('bills.vat_invoice') }}
                                             </button>
                                             <button
                                                 v-if="!isVatPayer"
@@ -313,21 +310,21 @@ const deleteBill = () => {
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('non_vat_invoice')"
                                             >
-                                                Non-VAT Invoice
+                                                {{ $t('bills.non_vat_invoice') }}
                                             </button>
                                             <button
                                                 type="button"
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('delivery_note')"
                                             >
-                                                Delivery Note
+                                                {{ $t('bills.delivery_note') }}
                                             </button>
                                             <button
                                                 type="button"
                                                 class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none transition duration-150 ease-in-out"
                                                 @click="openPrintPreviewModal('quotation')"
                                             >
-                                                Quotation
+                                                {{ $t('bills.quotation') }}
                                             </button>
                                         </template>
                                     </Dropdown>
@@ -338,24 +335,24 @@ const deleteBill = () => {
 
                     <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                            <h3 class="text-base font-semibold text-slate-800">Customer Details</h3>
+                            <h3 class="text-base font-semibold text-slate-800">{{ $t('bills.customer_details') }}</h3>
                         </div>
                         <dl class="space-y-4 px-6 py-5 text-sm">
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Name</dt>
+                                <dt class="text-slate-500">{{ $t('bills.name') }}</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ customerDisplayName(bill.customer) }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Company ID</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.company_id || 'Not provided' }}</dd>
+                                <dt class="text-slate-500">{{ $t('bills.company_id') }}</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.company_id || $t('bills.not_provided') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                                <dt class="text-slate-500">Email</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.email || 'Not provided' }}</dd>
+                                <dt class="text-slate-500">{{ $t('bills.email') }}</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.email || $t('bills.not_provided') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Phone</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.phone_number || 'Not provided' }}</dd>
+                                <dt class="text-slate-500">{{ $t('bills.phone') }}</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ bill.customer?.phone_number || $t('bills.not_provided') }}</dd>
                             </div>
                         </dl>
                     </article>
@@ -363,20 +360,20 @@ const deleteBill = () => {
 
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                        <h3 class="text-base font-semibold text-slate-800">Items</h3>
+                        <h3 class="text-base font-semibold text-slate-800">{{ $t('bills.items') }}</h3>
                     </div>
                     <div class="hidden overflow-x-auto lg:block">
                         <table class="min-w-full border-collapse">
                             <thead>
                                 <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">#</th>
-                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
-                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">EAN</th>
-                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Packages</th>
-                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Qty</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Unit Price</th>
-                                    <th v-if="isVatPayer" class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Total</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.product') }}</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.ean') }}</th>
+                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.packages') }}</th>
+                                    <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.qty') }}</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.unit_price') }}</th>
+                                    <th v-if="isVatPayer" class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.vat') }}</th>
+                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">{{ $t('bills.total') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -399,7 +396,7 @@ const deleteBill = () => {
                                     <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.quantity }}</td>
                                     <td class="px-5 py-4 text-right">
                                         <p class="text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</p>
-                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
+                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
                                     </td>
                                     <td v-if="isVatPayer" class="px-5 py-4 text-right text-sm text-slate-700">
                                         <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
@@ -408,7 +405,7 @@ const deleteBill = () => {
                                     </td>
                                     <td class="px-5 py-4 text-right">
                                         <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
-                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -424,16 +421,16 @@ const deleteBill = () => {
                                 <div>
                                     <h4 class="text-sm font-semibold text-slate-900">{{ item.product.name }}</h4>
                                     <p v-if="item.product?.short_name" class="mt-0.5 text-xs text-slate-500">{{ item.product.short_name }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">Item #{{ index + 1 }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">{{ $t('bills.item_index') }} #{{ index + 1 }}</p>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
-                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
                                 </div>
                             </div>
                             <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
                                 <div>
-                                    <p class="text-slate-500">EAN</p>
+                                    <p class="text-slate-500">{{ $t('bills.ean') }}</p>
                                     <p class="mt-1">
                                         <span class="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700">
                                             {{ item.product?.ean || '-' }}
@@ -441,20 +438,20 @@ const deleteBill = () => {
                                     </p>
                                 </div>
                                 <div>
-                                    <p class="text-slate-500">Packages</p>
+                                    <p class="text-slate-500">{{ $t('bills.packages') }}</p>
                                     <p class="mt-1 font-medium">{{ item.packages || 1 }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-slate-500">Qty</p>
+                                    <p class="text-slate-500">{{ $t('bills.qty') }}</p>
                                     <p class="mt-1 font-medium">{{ item.quantity }}</p>
                                 </div>
                                 <div :class="isVatPayer ? '' : 'col-span-3'">
-                                    <p class="text-slate-500">Unit</p>
+                                    <p class="text-slate-500">{{ $t('bills.unit') }}</p>
                                     <p class="mt-1 font-medium">{{ formatPrice(item.unit_price) }}</p>
-                                    <p v-if="isVatPayer" class="mt-0.5 text-[11px] text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-[11px] text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
                                 </div>
                                 <div v-if="isVatPayer">
-                                    <p class="text-slate-500">VAT</p>
+                                    <p class="text-slate-500">{{ $t('bills.vat') }}</p>
                                     <p class="mt-1">
                                         <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
                                             {{ item.vat_rate }}%
@@ -468,15 +465,15 @@ const deleteBill = () => {
 
                 <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                        <h3 class="text-base font-semibold text-slate-800">Summary</h3>
+                        <h3 class="text-base font-semibold text-slate-800">{{ $t('bills.summary') }}</h3>
                     </div>
                     <div class="px-6 py-5">
                         <dl class="ml-auto max-w-sm space-y-3 text-sm">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                                <dt class="text-slate-500">Subtotal</dt>
+                                <dt class="text-slate-500">{{ $t('bills.subtotal') }}</dt>
                                 <dd class="text-right">
                                     <p class="font-medium text-slate-900">{{ formatPrice(bill.subtotal) }}</p>
-                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billSubtotalExcludingVat()) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(billSubtotalExcludingVat()) }}</p>
                                 </dd>
                             </div>
                             <div v-if="hasAdjustment()" class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -498,10 +495,10 @@ const deleteBill = () => {
                                 </dd>
                             </div>
                             <div class="flex items-center justify-between pt-1">
-                                <dt class="text-base font-semibold text-slate-900">Total</dt>
+                                <dt class="text-base font-semibold text-slate-900">{{ $t('bills.total') }}</dt>
                                 <dd class="text-right">
                                     <p class="text-base font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
-                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">{{ $t('bills.excl_vat') }} {{ formatPrice(billTotalExcludingVat()) }}</p>
                                 </dd>
                             </div>
                         </dl>
@@ -510,7 +507,7 @@ const deleteBill = () => {
 
                 <section v-if="bill.notes" class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                     <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                        <h3 class="text-base font-semibold text-slate-800">Notes</h3>
+                        <h3 class="text-base font-semibold text-slate-800">{{ $t('bills.notes') }}</h3>
                     </div>
                     <p class="px-6 py-5 text-sm text-slate-700">{{ bill.notes }}</p>
                 </section>
@@ -520,7 +517,7 @@ const deleteBill = () => {
         <Modal :show="showPrintPreviewModal" max-width="7xl" @close="closePrintPreviewModal">
             <div class="preview-modal-content">
                 <div class="preview-modal-header">
-                    <h3 class="text-lg font-semibold text-slate-900">Náhled - {{ currentPreviewLabel }}</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">{{ $t('bills.preview') }} - {{ currentPreviewLabel }}</h3>
                     <div class="flex items-center gap-2">
                         <button
                             type="button"
@@ -530,7 +527,7 @@ const deleteBill = () => {
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
                             </svg>
-                            Vytisknout
+                            {{ $t('bills.print_btn') }}
                         </button>
                         <button
                             type="button"
@@ -541,7 +538,7 @@ const deleteBill = () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7m0 0v7m0-7L10 14" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h6m-6 0v14h14v-6" />
                             </svg>
-                            Otevřít v novém okně
+                            {{ $t('bills.open_in_new_window') }}
                         </button>
                         <button
                             type="button"
@@ -559,7 +556,7 @@ const deleteBill = () => {
                     <iframe
                         ref="previewFrameRef"
                         :src="embeddedPreviewUrl"
-                        :title="`Náhled ${currentPreviewLabel}`"
+                        :title="`${$t('bills.preview')} ${currentPreviewLabel}`"
                         class="preview-frame"
                     />
                 </div>

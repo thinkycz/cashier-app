@@ -33,16 +33,16 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Reset Password" />
+        <Head :title="$t('auth.reset_password')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Choose a new password</h1>
-            <p class="mt-1 text-sm text-slate-600">Set a strong password to secure your account.</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.choose_new_password') }}</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ $t('auth.set_strong_password') }}</p>
         </div>
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.email')" />
 
                 <TextInput
                     id="email"
@@ -58,7 +58,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.password')" />
 
                 <TextInput
                     id="password"
@@ -75,7 +75,7 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    :value="$t('auth.confirm_password')"
                 />
 
                 <TextInput
@@ -98,7 +98,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Reset Password
+                    {{ $t('auth.reset_password') }}
                 </PrimaryButton>
             </div>
         </form>

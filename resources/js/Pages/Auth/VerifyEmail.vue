@@ -23,25 +23,22 @@ const verificationLinkSent = computed(
 
 <template>
     <GuestLayout>
-        <Head title="Email Verification" />
+        <Head :title="$t('auth.email_verification')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Verify your email</h1>
-            <p class="mt-1 text-sm text-slate-600">One last step before you can access everything.</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.verify_your_email') }}</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ $t('auth.one_last_step') }}</p>
         </div>
 
         <div class="mb-4 text-sm text-slate-600">
-            Thanks for signing up! Before getting started, could you verify your
-            email address by clicking on the link we just emailed to you? If you
-            didn't receive the email, we will gladly send you another.
+            {{ $t('auth.thanks_for_signing_up') }}
         </div>
 
         <div
             class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"
             v-if="verificationLinkSent"
         >
-            A new verification link has been sent to the email address you
-            provided during registration.
+            {{ $t('auth.new_verification_link_sent') }}
         </div>
 
         <form @submit.prevent="submit">
@@ -51,7 +48,7 @@ const verificationLinkSent = computed(
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Resend Verification Email
+                    {{ $t('auth.resend_verification_email') }}
                 </PrimaryButton>
 
                 <Link
@@ -59,7 +56,7 @@ const verificationLinkSent = computed(
                     method="post"
                     as="button"
                     class="rounded-md text-center text-sm text-slate-600 underline decoration-teal-200 underline-offset-4 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 sm:text-left"
-                    >Log Out</Link
+                    >{{ $t('auth.log_out') }}</Link
                 >
             </div>
         </form>

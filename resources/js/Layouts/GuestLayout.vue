@@ -1,6 +1,8 @@
 <script setup>
 import BrandLogo from '@/Components/BrandLogo.vue';
-import { Link } from '@inertiajs/vue3';
+import Dropdown from '@/Components/Dropdown.vue';
+import DropdownLink from '@/Components/DropdownLink.vue';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -9,6 +11,9 @@ const props = defineProps({
         default: 'md',
     },
 });
+
+const page = usePage();
+const currentLocale = computed(() => page.props.locale || 'en');
 
 const maxWidthClass = computed(() => {
     return {
@@ -27,6 +32,37 @@ const maxWidthClass = computed(() => {
     <div
         class="relative flex min-h-screen flex-col items-center overflow-hidden bg-gradient-to-br from-cyan-50 via-sky-50 to-teal-100 pt-8 sm:justify-center sm:pt-0"
     >
+        <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-50">
+            <Dropdown align="right" width="48">
+                <template #trigger>
+                    <span class="inline-flex">
+                        <button
+                            type="button"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-100 bg-white/80 text-xl shadow-sm transition duration-150 ease-in-out hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+                            :aria-label="`Current language: ${currentLocale}`"
+                        >
+                            {{ currentLocale === 'cs' ? '🇨🇿' : '🇬🇧' }}
+                        </button>
+                    </span>
+                </template>
+
+                <template #content>
+                    <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'en' }" as="button">
+                        <span class="inline-flex items-center gap-2">
+                            <span class="text-lg leading-none">🇬🇧</span>
+                            <span>English</span>
+                        </span>
+                    </DropdownLink>
+                    <DropdownLink :href="route('language.switch')" method="post" :data="{ language: 'cs' }" as="button">
+                        <span class="inline-flex items-center gap-2">
+                            <span class="text-lg leading-none">🇨🇿</span>
+                            <span>Čeština</span>
+                        </span>
+                    </DropdownLink>
+                </template>
+            </Dropdown>
+        </div>
+
         <div class="pointer-events-none absolute inset-0">
             <div class="absolute -top-12 -left-16 h-44 w-44 rounded-full bg-cyan-200/50 blur-2xl"></div>
             <div class="absolute top-14 right-8 h-56 w-56 rounded-full bg-teal-300/30 blur-3xl"></div>

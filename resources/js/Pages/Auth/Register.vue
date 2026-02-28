@@ -9,6 +9,9 @@ import Checkbox from '@/Components/Checkbox.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const form = useForm({
     first_name: '',
@@ -35,7 +38,7 @@ const fillFromAres = async () => {
 
     const ico = String(form.company_id ?? '').replace(/\D/g, '');
     if (ico.length !== 8) {
-        aresError.value = 'Company ID must be 8 digits.';
+        aresError.value = t('profile.company_must_be_8');
         return;
     }
 
@@ -61,7 +64,7 @@ const fillFromAres = async () => {
         const message =
             error?.response?.data?.errors?.company_id?.[0] ??
             error?.response?.data?.message ??
-            'Company lookup failed.';
+            t('profile.lookup_failed');
 
         aresError.value = message;
     } finally {
@@ -78,11 +81,11 @@ const submit = () => {
 
 <template>
     <GuestLayout maxWidth="4xl">
-        <Head title="Register" />
+        <Head :title="$t('auth.register')" />
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Create your account</h1>
-            <p class="mt-1 text-sm text-slate-600">Start using Cashier in a few seconds.</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $t('auth.create_account') }}</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ $t('auth.start_using') }}</p>
         </div>
 
         <form @submit.prevent="submit" class="flex flex-col gap-10">
@@ -92,12 +95,12 @@ const submit = () => {
                     <!-- Personal Details -->
                     <div>
                         <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h2 class="text-base font-semibold leading-7 text-slate-900">Personal Details</h2>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Your basic information.</p>
+                            <h2 class="text-base font-semibold leading-7 text-slate-900">{{ $t('auth.personal_details') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('auth.personal_details_desc') }}</p>
                         </div>
                         <div class="grid gap-6 sm:grid-cols-2">
                             <div>
-                                <InputLabel for="first_name" value="First Name" />
+                                <InputLabel for="first_name" :value="$t('auth.first_name')" />
                                 <TextInput
                                     id="first_name"
                                     type="text"
@@ -111,7 +114,7 @@ const submit = () => {
                             </div>
 
                             <div>
-                                <InputLabel for="last_name" value="Last Name" />
+                                <InputLabel for="last_name" :value="$t('auth.last_name')" />
                                 <TextInput
                                     id="last_name"
                                     type="text"
@@ -128,13 +131,13 @@ const submit = () => {
                     <!-- Account Details -->
                     <div>
                          <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h2 class="text-base font-semibold leading-7 text-slate-900">Account Security</h2>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Set up your login credentials.</p>
+                            <h2 class="text-base font-semibold leading-7 text-slate-900">{{ $t('auth.account_security') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('auth.account_security_desc') }}</p>
                         </div>
                         
                         <div class="space-y-6">
                             <div>
-                                <InputLabel for="email" value="Email Address" />
+                                <InputLabel for="email" :value="$t('auth.email_address')" />
                                 <TextInput
                                     id="email"
                                     type="email"
@@ -148,7 +151,7 @@ const submit = () => {
 
                             <div class="grid gap-6 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="password" value="Password" />
+                                    <InputLabel for="password" :value="$t('auth.password')" />
                                     <TextInput
                                         id="password"
                                         type="password"
@@ -163,7 +166,7 @@ const submit = () => {
                                 <div>
                                     <InputLabel
                                         for="password_confirmation"
-                                        value="Confirm Password"
+                                        :value="$t('auth.confirm_password')"
                                     />
                                     <TextInput
                                         id="password_confirmation"
@@ -188,13 +191,13 @@ const submit = () => {
                     <!-- Company Details -->
                     <div>
                          <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h2 class="text-base font-semibold leading-7 text-slate-900">Company Details</h2>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Information about your business or freelancing activity.</p>
+                            <h2 class="text-base font-semibold leading-7 text-slate-900">{{ $t('auth.company_details') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('auth.company_details_desc') }}</p>
                         </div>
                         
                         <div class="space-y-6">
                             <div>
-                                <InputLabel for="company_id" value="Company ID (IČO)" />
+                                <InputLabel for="company_id" :value="$t('auth.company_id_ico')" />
                                 <div class="mt-1 flex gap-2">
                                     <TextInput
                                         id="company_id"
@@ -213,7 +216,7 @@ const submit = () => {
                                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Fill from ARES
+                                        {{ $t('auth.fill_from_ares') }}
                                     </SecondaryButton>
                                 </div>
                                 <InputError class="mt-2" :message="form.errors.company_id" />
@@ -222,7 +225,7 @@ const submit = () => {
 
                             <div class="grid gap-6 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="company_name" value="Company Name" />
+                                    <InputLabel for="company_name" :value="$t('auth.company_name')" />
                                     <TextInput
                                         id="company_name"
                                         type="text"
@@ -234,7 +237,7 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="vat_id" value="VAT ID (DIČ)" />
+                                    <InputLabel for="vat_id" :value="$t('auth.vat_id_dic')" />
                                     <TextInput
                                         id="vat_id"
                                         type="text"
@@ -247,14 +250,14 @@ const submit = () => {
 
                             <div class="grid gap-6 sm:grid-cols-2 items-start">
                                 <div>
-                                    <InputLabel for="subject_type" value="Subject Type" />
+                                    <InputLabel for="subject_type" :value="$t('auth.subject_type')" />
                                     <SelectInput
                                         id="subject_type"
                                         class="mt-1 block w-full"
                                         v-model="form.subject_type"
                                     >
-                                        <option value="fyzicka osoba">Fyzická osoba (Natural Person)</option>
-                                        <option value="pravnicka osoba">Právnická osoba (Legal Entity)</option>
+                                        <option value="fyzicka osoba">{{ $t('auth.natural_person') }}</option>
+                                        <option value="pravnicka osoba">{{ $t('auth.legal_person') }}</option>
                                     </SelectInput>
                                     <InputError class="mt-2" :message="form.errors.subject_type" />
                                 </div>
@@ -262,7 +265,7 @@ const submit = () => {
                                 <div class="sm:mt-8">
                                     <label class="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                                         <Checkbox name="is_vat_payer" v-model:checked="form.is_vat_payer" />
-                                        <span class="text-sm font-medium text-slate-700">I am a registered VAT Payer</span>
+                                        <span class="text-sm font-medium text-slate-700">{{ $t('auth.registered_vat_payer') }}</span>
                                     </label>
                                     <InputError class="mt-2" :message="form.errors.is_vat_payer" />
                                 </div>
@@ -273,13 +276,13 @@ const submit = () => {
                     <!-- Address -->
                     <div>
                         <div class="border-b border-slate-200 pb-3 mb-5">
-                            <h2 class="text-base font-semibold leading-7 text-slate-900">Registered Address</h2>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">Where is your business officially located?</p>
+                            <h2 class="text-base font-semibold leading-7 text-slate-900">{{ $t('auth.registered_address') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $t('auth.registered_address_desc') }}</p>
                         </div>
                         
                         <div class="space-y-6">
                             <div>
-                                <InputLabel for="street" value="Street & Number" />
+                                <InputLabel for="street" :value="$t('auth.street_and_number')" />
                                 <TextInput
                                     id="street"
                                     type="text"
@@ -292,7 +295,7 @@ const submit = () => {
 
                             <div class="grid gap-6 sm:grid-cols-3">
                                 <div class="sm:col-span-2">
-                                    <InputLabel for="city" value="City" />
+                                    <InputLabel for="city" :value="$t('auth.city')" />
                                     <TextInput
                                         id="city"
                                         type="text"
@@ -304,7 +307,7 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <InputLabel for="zip" value="ZIP / Postal Code" />
+                                    <InputLabel for="zip" :value="$t('auth.zip_postal_code')" />
                                     <TextInput
                                         id="zip"
                                         type="text"
@@ -317,14 +320,14 @@ const submit = () => {
                             </div>
                             
                             <div>
-                                <InputLabel for="country_code" value="Country Code" />
+                                <InputLabel for="country_code" :value="$t('auth.country_code')" />
                                 <TextInput
                                     id="country_code"
                                     type="text"
                                     class="mt-1 block w-full sm:max-w-xs"
                                     v-model="form.country_code"
                                     maxlength="2"
-                                    placeholder="e.g. CZ"
+                                    :placeholder="$t('auth.eg_cz')"
                                     autocomplete="country"
                                 />
                                 <InputError class="mt-2" :message="form.errors.country_code" />
@@ -340,7 +343,7 @@ const submit = () => {
                     :href="route('login')"
                     class="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors"
                 >
-                    &larr; Back to login
+                    &larr; {{ $t('auth.back_to_login') }}
                 </Link>
 
                 <PrimaryButton
@@ -351,7 +354,7 @@ const submit = () => {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Complete Registration
+                    {{ $t('auth.complete_registration') }}
                 </PrimaryButton>
             </div>
         </form>

@@ -7,6 +7,7 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { createPinia } from 'pinia';
 import { startOfflineSyncEngine } from '@/offline/syncEngine';
+import { i18n } from './i18n';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -34,12 +35,26 @@ createInertiaApp({
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
-            .use(createPinia());
+            .use(createPinia())
+            .use(i18n);
 
         const disableVueDevtools = String(import.meta.env.VITE_DISABLE_VUE_DEVTOOLS ?? 'true') !== 'false';
         if (disableVueDevtools) {
             app.config.devtools = false;
         }
+
+        app.mixin({
+            mounted() {
+                if (this.$page.props.locale) {
+                    this.$i18n.locale = this.$page.props.locale;
+                }
+            },
+            updated() {
+                if (this.$page.props.locale && this.$i18n.locale !== this.$page.props.locale) {
+                    this.$i18n.locale = this.$page.props.locale;
+                }
+            }
+        });
 
         return app.mount(el);
     },

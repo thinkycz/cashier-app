@@ -30,7 +30,7 @@ const userInitial = computed(() => {
 </script>
 
 <template>
-    <Head title="Profile" />
+    <Head :title="$t('profile.title')" />
 
     <AuthenticatedLayout>
         <div class="py-10 sm:py-12">
@@ -43,14 +43,13 @@ const userInitial = computed(() => {
                     >
                         <div>
                             <p class="text-sm font-medium text-teal-100">
-                                Account center
+                                {{ $t('profile.account_center') }}
                             </p>
                             <h1 class="mt-1 text-2xl font-semibold sm:text-3xl">
-                                Manage your profile
+                                {{ $t('profile.manage_profile') }}
                             </h1>
                             <p class="mt-2 max-w-2xl text-sm text-cyan-100">
-                                Update your personal details, keep your password
-                                secure, and control account access in one place.
+                                {{ $t('profile.manage_profile_desc') }}
                             </p>
                         </div>
                         <div

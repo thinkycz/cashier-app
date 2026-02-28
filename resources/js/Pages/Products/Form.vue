@@ -6,8 +6,11 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { useForm, usePage, Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
@@ -33,19 +36,19 @@ const form = useForm({
     is_active: isEdit.value ? props.product?.is_active ?? true : true,
 });
 
-const pageTitle = computed(() => (isEdit.value ? `Edit Product - ${props.product?.name ?? ''}` : 'Create Product'));
-const formTitle = computed(() => (isEdit.value ? 'Edit Product' : 'Create Product'));
+const pageTitle = computed(() => (isEdit.value ? `${t('products.edit_title')} - ${props.product?.name ?? ''}` : t('products.create_title')));
+const formTitle = computed(() => (isEdit.value ? t('products.edit_title') : t('products.create_title')));
 const formSubtitle = computed(() =>
     isEdit.value
-        ? 'Update product details and pricing for this item.'
-        : 'Add a new product to your catalog with pricing and VAT settings.',
+        ? t('products.edit_subtitle')
+        : t('products.create_subtitle'),
 );
 const submitLabel = computed(() => {
     if (form.processing) {
-        return isEdit.value ? 'Saving...' : 'Creating...';
+        return isEdit.value ? t('products.saving') : t('products.creating');
     }
 
-    return isEdit.value ? 'Save Changes' : 'Create Product';
+    return isEdit.value ? t('products.save_changes') : t('products.create');
 });
 
 const submit = () => {
@@ -80,7 +83,7 @@ const submit = () => {
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-                        Back to Products
+                        {{ $t('products.back_to_products') }}
                     </Link>
                 </div>
             </div>
@@ -91,45 +94,45 @@ const submit = () => {
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                            <h3 class="text-base font-semibold text-slate-800">Basic Information</h3>
+                            <h3 class="text-base font-semibold text-slate-800">{{ $t('products.basic_info') }}</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                             <div>
-                                <InputLabel for="name" value="Product Name *" />
+                                <InputLabel for="name" :value="$t('products.product_name_req')" />
                                 <TextInput
                                     id="name"
                                     v-model="form.name"
                                     type="text"
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.name }"
-                                    placeholder="Enter product name"
+                                    :placeholder="$t('products.enter_product_name')"
                                     required
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.name" />
                             </div>
 
                             <div>
-                                <InputLabel for="short_name" value="Short Name" />
+                                <InputLabel for="short_name" :value="$t('products.short_name')" />
                                 <TextInput
                                     id="short_name"
                                     v-model="form.short_name"
                                     type="text"
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.short_name }"
-                                    placeholder="Optional short name"
+                                    :placeholder="$t('products.optional_short_name')"
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.short_name" />
                             </div>
 
                             <div>
-                                <InputLabel for="ean" value="EAN Code" />
+                                <InputLabel for="ean" :value="$t('products.ean_code')" />
                                 <TextInput
                                     id="ean"
                                     v-model="form.ean"
                                     type="text"
                                     class="mt-1 block"
                                     :class="{ 'border-red-500': form.errors.ean }"
-                                    placeholder="Optional barcode"
+                                    :placeholder="$t('products.optional_barcode')"
                                 />
                                 <InputError class="mt-1.5" :message="form.errors.ean" />
                             </div>
@@ -141,7 +144,7 @@ const submit = () => {
                                         v-model:checked="form.is_active"
                                         class="text-teal-600 focus:ring-teal-500"
                                     />
-                                    <span>Active product</span>
+                                    <span>{{ $t('products.active_product') }}</span>
                                 </label>
                                 <InputError class="mt-1.5" :message="form.errors.is_active" />
                             </div>
@@ -150,11 +153,11 @@ const submit = () => {
 
                     <div class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
-                            <h3 class="text-base font-semibold text-slate-800">Pricing</h3>
+                            <h3 class="text-base font-semibold text-slate-800">{{ $t('products.pricing') }}</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                             <div :class="isVatPayer ? '' : 'md:col-span-2'">
-                                <InputLabel for="price" value="Price (Kc) *" />
+                                <InputLabel for="price" :value="$t('products.price_kc_req')" />
                                 <div class="relative">
                                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Kc</span>
                                     <TextInput
@@ -173,7 +176,7 @@ const submit = () => {
                             </div>
 
                             <div v-if="isVatPayer">
-                                <InputLabel for="vat_rate" value="VAT Rate *" />
+                                <InputLabel for="vat_rate" :value="$t('products.vat_rate_req')" />
                                 <SelectInput
                                     id="vat_rate"
                                     v-model="form.vat_rate"
@@ -196,7 +199,7 @@ const submit = () => {
                             :href="route('products.index')"
                             class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-200"
                         >
-                            Cancel
+                            {{ $t('products.cancel') }}
                         </Link>
                         <PrimaryButton
                             :disabled="form.processing"
