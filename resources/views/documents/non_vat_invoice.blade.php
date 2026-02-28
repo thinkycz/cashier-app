@@ -27,7 +27,10 @@
     <div class="flex min-h-[295mm] flex-col px-[18mm] pb-[14mm] pt-[12mm] text-[11px] leading-snug text-slate-900">
         <div class="pt-6">
             <div class="border-t-2 border-slate-400"></div>
-            <h1 class="mt-3 text-center text-2xl font-semibold tracking-tight">Faktura {{ $invoiceNumber }}</h1>
+            <div class="mt-3 flex items-baseline justify-between gap-6">
+                <p class="text-2xl font-semibold tracking-tight">Faktura</p>
+                <p class="text-2xl font-semibold tracking-tight">{{ $invoiceNumber }}</p>
+            </div>
         </div>
 
         <div class="mt-12 grid grid-cols-2 gap-x-16">
