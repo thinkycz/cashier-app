@@ -285,7 +285,7 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertViewIs('documents.invoice')
+            ->assertViewIs('documents.vat_invoice')
             ->assertSee('Faktura', false);
     }
 

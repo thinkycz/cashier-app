@@ -163,7 +163,7 @@ class BillController extends Controller
         ];
 
         $view = match ($documentType) {
-            'invoice' => 'documents.invoice',
+            'invoice' => 'documents.vat_invoice',
             'non_vat_invoice' => 'documents.non_vat_invoice',
             'delivery_note' => 'documents.delivery_note',
             default => $bill->status === 'order' ? 'bills.quotation' : 'bills.bill',
