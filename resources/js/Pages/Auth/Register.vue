@@ -3,17 +3,65 @@ import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const form = useForm({
     first_name: '',
     last_name: '',
     company_id: '',
+    company_name: '',
+    vat_id: '',
+    street: '',
+    city: '',
+    zip: '',
+    country_code: '',
     email: '',
     password: '',
     password_confirmation: '',
 });
+
+const aresLoading = ref(false);
+const aresError = ref('');
+
+const fillFromAres = async () => {
+    aresError.value = '';
+
+    const ico = String(form.company_id ?? '').replace(/\D/g, '');
+    if (ico.length !== 8) {
+        aresError.value = 'Company ID must be 8 digits.';
+        return;
+    }
+
+    aresLoading.value = true;
+
+    try {
+        const response = await window.axios.get(route('ares.company'), {
+            params: { company_id: ico },
+        });
+
+        const data = response?.data ?? {};
+
+        form.company_id = data.company_id ?? form.company_id;
+        form.company_name = data.company_name ?? '';
+        form.vat_id = data.vat_id ?? '';
+        form.street = data.street ?? '';
+        form.city = data.city ?? '';
+        form.zip = data.zip ?? '';
+        form.country_code = data.country_code ?? '';
+    } catch (error) {
+        const message =
+            error?.response?.data?.errors?.company_id?.[0] ??
+            error?.response?.data?.message ??
+            'Company lookup failed.';
+
+        aresError.value = message;
+    } finally {
+        aresLoading.value = false;
+    }
+};
 
 const submit = () => {
     form.post(route('register'), {
@@ -68,16 +116,114 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel for="company_id" value="Company ID" />
 
-                <TextInput
-                    id="company_id"
-                    type="text"
-                    class="mt-1 block"
-                    v-model="form.company_id"
-                    required
-                    autocomplete="organization"
-                />
+                <div class="mt-1 flex gap-2">
+                    <TextInput
+                        id="company_id"
+                        type="text"
+                        class="block flex-1"
+                        v-model="form.company_id"
+                        required
+                        autocomplete="organization"
+                    />
+
+                    <SecondaryButton
+                        :disabled="aresLoading || form.processing"
+                        @click.prevent="fillFromAres"
+                    >
+                        Fill from ARES
+                    </SecondaryButton>
+                </div>
 
                 <InputError class="mt-2" :message="form.errors.company_id" />
+                <InputError class="mt-2" :message="aresError" />
+            </div>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                    <InputLabel for="company_name" value="Company Name" />
+
+                    <TextInput
+                        id="company_name"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.company_name"
+                        autocomplete="organization"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.company_name" />
+                </div>
+
+                <div>
+                    <InputLabel for="vat_id" value="VAT ID" />
+
+                    <TextInput
+                        id="vat_id"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.vat_id"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.vat_id" />
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="street" value="Street" />
+
+                <TextInput
+                    id="street"
+                    type="text"
+                    class="mt-1 block"
+                    v-model="form.street"
+                    autocomplete="address-line1"
+                />
+
+                <InputError class="mt-2" :message="form.errors.street" />
+            </div>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                    <InputLabel for="city" value="City" />
+
+                    <TextInput
+                        id="city"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.city"
+                        autocomplete="address-level2"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.city" />
+                </div>
+
+                <div>
+                    <InputLabel for="zip" value="ZIP" />
+
+                    <TextInput
+                        id="zip"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.zip"
+                        autocomplete="postal-code"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.zip" />
+                </div>
+
+                <div>
+                    <InputLabel for="country_code" value="Country Code" />
+
+                    <TextInput
+                        id="country_code"
+                        type="text"
+                        class="mt-1 block"
+                        v-model="form.country_code"
+                        maxlength="2"
+                        autocomplete="country"
+                    />
+
+                    <InputError class="mt-2" :message="form.errors.country_code" />
+                </div>
             </div>
 
             <div class="mt-4">

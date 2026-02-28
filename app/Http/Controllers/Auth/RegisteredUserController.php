@@ -30,20 +30,42 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'company_id' => 'required|string|max:255|unique:'.User::class.',company_id',
+            'company_name' => 'nullable|string|max:255',
+            'vat_id' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'zip' => 'nullable|string|max:255',
+            'country_code' => 'nullable|string|size:2',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $normalizeNullableString = static function (mixed $value): ?string {
+            if (! is_string($value)) {
+                return null;
+            }
+
+            $trimmed = trim($value);
+
+            return $trimmed === '' ? null : $trimmed;
+        };
+
         $user = User::create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'company_id' => $request->company_id,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'first_name' => $normalizeNullableString($validated['first_name']),
+            'last_name' => $normalizeNullableString($validated['last_name']),
+            'company_id' => $normalizeNullableString($validated['company_id']),
+            'company_name' => $normalizeNullableString($validated['company_name'] ?? null),
+            'vat_id' => $normalizeNullableString($validated['vat_id'] ?? null),
+            'street' => $normalizeNullableString($validated['street'] ?? null),
+            'city' => $normalizeNullableString($validated['city'] ?? null),
+            'zip' => $normalizeNullableString($validated['zip'] ?? null),
+            'country_code' => $normalizeNullableString($validated['country_code'] ?? null),
+            'email' => $normalizeNullableString($validated['email']),
+            'password' => Hash::make($validated['password']),
         ]);
 
         event(new Registered($user));

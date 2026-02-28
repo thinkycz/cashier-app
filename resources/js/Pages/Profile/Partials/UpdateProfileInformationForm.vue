@@ -2,8 +2,10 @@
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -30,6 +32,46 @@ const form = useForm({
     zip: user.zip ?? '',
     country_code: user.country_code ?? '',
 });
+
+const aresLoading = ref(false);
+const aresError = ref('');
+
+const fillFromAres = async () => {
+    aresError.value = '';
+
+    const ico = String(form.company_id ?? '').replace(/\D/g, '');
+    if (ico.length !== 8) {
+        aresError.value = 'Company ID must be 8 digits.';
+        return;
+    }
+
+    aresLoading.value = true;
+
+    try {
+        const response = await window.axios.get(route('ares.company'), {
+            params: { company_id: ico },
+        });
+
+        const data = response?.data ?? {};
+
+        form.company_id = data.company_id ?? form.company_id;
+        form.company_name = data.company_name ?? form.company_name;
+        form.vat_id = data.vat_id ?? form.vat_id;
+        form.street = data.street ?? form.street;
+        form.city = data.city ?? form.city;
+        form.zip = data.zip ?? form.zip;
+        form.country_code = data.country_code ?? form.country_code;
+    } catch (error) {
+        const message =
+            error?.response?.data?.errors?.company_id?.[0] ??
+            error?.response?.data?.message ??
+            'Company lookup failed.';
+
+        aresError.value = message;
+    } finally {
+        aresLoading.value = false;
+    }
+};
 </script>
 
 <template>
@@ -65,14 +107,24 @@ const form = useForm({
             <div>
                 <InputLabel for="company_id" value="Company ID" />
 
-                <TextInput
-                    id="company_id"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.company_id"
-                />
+                <div class="mt-1 flex gap-2">
+                    <TextInput
+                        id="company_id"
+                        type="text"
+                        class="block flex-1"
+                        v-model="form.company_id"
+                    />
+
+                    <SecondaryButton
+                        :disabled="aresLoading || form.processing"
+                        @click.prevent="fillFromAres"
+                    >
+                        Fill from ARES
+                    </SecondaryButton>
+                </div>
 
                 <InputError class="mt-2" :message="form.errors.company_id" />
+                <InputError class="mt-2" :message="aresError" />
             </div>
 
             <div>
