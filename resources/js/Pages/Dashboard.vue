@@ -27,6 +27,7 @@ const props = defineProps({
     products: Array,
     openTransactions: Array,
     customers: Array,
+    activeTransactionId: [Number, String],
 });
 const page = usePage();
 
@@ -115,6 +116,22 @@ const openReceipts = computed(() => {
         return new Date(right?.created_at || 0).getTime() - new Date(left?.created_at || 0).getTime();
     });
 });
+
+const isReceiptOpen = (receipt) => {
+    if (!receipt) {
+        return false;
+    }
+
+    if (receipt.state && receipt.state !== 'open') {
+        return false;
+    }
+
+    if (receipt.status && receipt.status !== 'open') {
+        return false;
+    }
+
+    return true;
+};
 
 const pendingSyncCount = computed(() => {
     return syncQueueReceipts.value.filter((receipt) => receipt?.sync_status === 'pending' || receipt?.sync_status === 'failed').length;
@@ -214,7 +231,7 @@ const addToCart = (product) => {
 };
 
 const canAddManualItem = computed(() => {
-    return Boolean(cart.currentTransaction) && manualProductName.value.trim().length > 0;
+    return isReceiptOpen(cart.currentTransaction) && manualProductName.value.trim().length > 0;
 });
 
 const addManualBillItem = () => {
@@ -339,7 +356,7 @@ const deleteEditedItem = () => {
 };
 
 const canCheckout = computed(() => {
-    return Boolean(cart.currentTransaction) && cart.items.length > 0 && !isCheckingOut.value;
+    return isReceiptOpen(cart.currentTransaction) && cart.items.length > 0 && !isCheckingOut.value;
 });
 
 const checkoutTotal = computed(() => {
@@ -1811,15 +1828,24 @@ onMounted(async () => {
         page: 1,
     });
 
-    if (cart.currentTransaction) {
-        cart.loadTransactionByIdentity(
-            cart.currentTransaction.id || cart.currentTransaction.transaction_id,
-            openReceipts.value,
-        );
+    const availableReceipts = openReceipts.value.filter(isReceiptOpen);
+
+    if (!isReceiptOpen(cart.currentTransaction)) {
+        cart.setTransaction(null);
     }
 
-    if (openReceipts.value.length > 0 && !cart.currentTransaction) {
-        cart.setTransaction(openReceipts.value[0]);
+    if (props.activeTransactionId) {
+        cart.loadTransactionByIdentity(props.activeTransactionId, availableReceipts);
+    } else if (cart.currentTransaction) {
+        const activeIdentity = cart.currentTransaction.id || cart.currentTransaction.transaction_id;
+        const matched = cart.loadTransactionByIdentity(activeIdentity, availableReceipts);
+        if (!matched) {
+            cart.setTransaction(null);
+        }
+    }
+
+    if (!cart.currentTransaction && availableReceipts.length > 0) {
+        cart.setTransaction(availableReceipts[0]);
     }
 
     document.addEventListener('click', handleDocumentClick);

@@ -429,10 +429,13 @@ export const useCartStore = defineStore('cart', () => {
             }
 
             const parsed = JSON.parse(rawState);
-            const normalizedTransaction = parsed?.currentTransaction || null;
+            let normalizedTransaction = parsed?.currentTransaction || null;
 
             if (normalizedTransaction) {
                 applyTransactionDefaults(normalizedTransaction);
+                if (!isTransactionActive(normalizedTransaction)) {
+                    normalizedTransaction = null;
+                }
             }
 
             return {
@@ -604,6 +607,22 @@ export const useCartStore = defineStore('cart', () => {
         transaction.adjustment_type = normalizeAdjustmentType(transaction.adjustment_type);
         transaction.adjustment_percent = clampPercent(transaction.adjustment_percent ?? 0);
         transaction.adjustment_amount = roundMoney(transaction.adjustment_amount ?? 0);
+    }
+
+    function isTransactionActive(transaction) {
+        if (!transaction) {
+            return false;
+        }
+
+        if (transaction.state && transaction.state !== 'open') {
+            return false;
+        }
+
+        if (transaction.status && transaction.status !== 'open') {
+            return false;
+        }
+
+        return true;
     }
 
     function createTemporaryReceiptCode() {

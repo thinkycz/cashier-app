@@ -1,13 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
     bill: Object,
 });
 
+const openForm = useForm({});
+const deleteForm = useForm({});
 const showPrintPreviewModal = ref(false);
 const previewFrameRef = ref(null);
 const selectedPrintDocument = ref('bill');
@@ -143,6 +145,18 @@ const adjustmentLabel = () => {
 
     return type === 'discount' ? 'Discount' : 'Surcharge';
 };
+
+const openBill = () => {
+    openForm.post(route('bills.open', props.bill.id));
+};
+
+const deleteBill = () => {
+    if (!confirm('Are you sure you want to delete this bill?')) {
+        return;
+    }
+
+    deleteForm.delete(route('bills.destroy', props.bill.id));
+};
 </script>
 
 <template>
@@ -167,33 +181,25 @@ const adjustmentLabel = () => {
                     </Link>
                     <button
                         type="button"
-                        @click="openPrintPreviewModal('bill')"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
+                        :disabled="openForm.processing"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="openBill"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
-                        Print Bill
+                        {{ openForm.processing ? 'Opening...' : 'Open in Dashboard' }}
                     </button>
                     <button
                         type="button"
-                        @click="openPrintPreviewModal('invoice')"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-cyan-700"
+                        :disabled="deleteForm.processing"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="deleteBill"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14" />
                         </svg>
-                        Print Invoice
-                    </button>
-                    <button
-                        type="button"
-                        @click="openPrintPreviewModal('delivery_note')"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-slate-800"
-                    >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4m4 4h8" />
-                        </svg>
-                        Print Delivery Note
+                        {{ deleteForm.processing ? 'Deleting...' : 'Delete' }}
                     </button>
                 </div>
             </div>
@@ -223,6 +229,44 @@ const adjustmentLabel = () => {
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
                             <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
                         </div>
+                    </div>
+                </section>
+
+                <section class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
+                    <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
+                        <h3 class="text-base font-semibold text-slate-800">Documents</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-2 px-6 py-5">
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-emerald-700"
+                            @click="openPrintPreviewModal('bill')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                            </svg>
+                            Print Bill
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-cyan-700"
+                            @click="openPrintPreviewModal('invoice')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            Print Invoice
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-slate-800"
+                            @click="openPrintPreviewModal('delivery_note')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4m4 4h8" />
+                            </svg>
+                            Print Delivery Note
+                        </button>
                     </div>
                 </section>
 

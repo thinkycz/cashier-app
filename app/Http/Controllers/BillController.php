@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Transaction;
 
@@ -64,6 +65,59 @@ class BillController extends Controller
         return Inertia::render('Bills/Show', [
             'bill' => $bill,
         ]);
+    }
+
+    public function open(Request $request, Transaction $bill)
+    {
+        if ($bill->status === 'open') {
+            return redirect()->route('dashboard', [
+                'active_transaction_id' => $bill->id,
+            ]);
+        }
+
+        $bill->load('transactionItems');
+        $userId = $request->user()->id;
+
+        $openTransaction = DB::transaction(function () use ($bill, $userId) {
+            $transaction = Transaction::create([
+                'user_id' => $userId,
+                'customer_id' => $bill->customer_id,
+                'subtotal' => $bill->subtotal,
+                'discount' => $bill->discount,
+                'adjustment_type' => $bill->adjustment_type,
+                'adjustment_percent' => $bill->adjustment_percent,
+                'adjustment_amount' => $bill->adjustment_amount,
+                'total' => $bill->total,
+                'status' => 'open',
+                'notes' => $bill->notes,
+            ]);
+
+            foreach ($bill->transactionItems as $item) {
+                $transaction->transactionItems()->create([
+                    'product_id' => $item->product_id,
+                    'packages' => $item->packages,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'vat_rate' => $item->vat_rate,
+                    'total' => $item->total,
+                ]);
+            }
+
+            return $transaction;
+        });
+
+        return redirect()->route('dashboard', [
+            'active_transaction_id' => $openTransaction->id,
+        ]);
+    }
+
+    public function destroy(Request $request, Transaction $bill)
+    {
+        $bill->delete();
+
+        return redirect()
+            ->route('bills.index')
+            ->with('success', 'Bill deleted.');
     }
 
     /**

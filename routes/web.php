@@ -34,8 +34,9 @@ Route::middleware('auth')->group(function () {
     
     Route::resource('products', ProductController::class);
     Route::resource('customers', CustomerController::class);
-    Route::resource('bills', BillController::class)->only(['index', 'show']);
+    Route::resource('bills', BillController::class)->only(['index', 'show', 'destroy']);
     Route::get('bills/{bill}/preview', [BillController::class, 'preview'])->name('bills.preview');
+    Route::post('bills/{bill}/open', [BillController::class, 'open'])->name('bills.open');
 });
 
 require __DIR__.'/auth.php';

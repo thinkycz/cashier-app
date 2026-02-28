@@ -16,9 +16,9 @@ use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $userId = auth()->id();
+        $userId = (int) $request->user()->getAuthIdentifier();
         $this->ensureAtLeastOneOpenReceipt($userId);
 
         $products = $this->activeProductsQueryForUser($userId)
@@ -27,11 +27,22 @@ class DashboardController extends Controller
             ->get();
         $openTransactions = $this->getOpenReceiptsForUser($userId);
         $customers = Customer::where('user_id', $userId)->get();
+        $activeTransactionId = null;
+        $requestedActiveTransactionId = $request->query('active_transaction_id');
+
+        if (is_numeric($requestedActiveTransactionId)) {
+            $candidate = (int) $requestedActiveTransactionId;
+
+            if ($candidate > 0 && $openTransactions->contains('id', $candidate)) {
+                $activeTransactionId = $candidate;
+            }
+        }
 
         return Inertia::render('Dashboard', [
             'products' => $products,
             'openTransactions' => $openTransactions,
             'customers' => $customers,
+            'activeTransactionId' => $activeTransactionId,
         ]);
     }
 
@@ -45,7 +56,7 @@ class DashboardController extends Controller
 
         $search = trim((string) ($validated['search'] ?? ''));
         $perPage = min((int) ($validated['per_page'] ?? 30), 30);
-        $userId = $request->user()->id;
+        $userId = (int) $request->user()->getAuthIdentifier();
 
         $paginator = $this->activeProductsQueryForUser($userId, $search)
             ->orderBy('name')
@@ -65,9 +76,9 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function storeReceipt(): JsonResponse
+    public function storeReceipt(Request $request): JsonResponse
     {
-        $userId = auth()->id();
+        $userId = (int) $request->user()->getAuthIdentifier();
 
         $transaction = Transaction::create([
             'user_id' => $userId,
@@ -98,7 +109,7 @@ class DashboardController extends Controller
             ], 422);
         }
 
-        $userId = $request->user()->id;
+        $userId = (int) $request->user()->getAuthIdentifier();
         $normalizedCompanyId = $this->normalizeCompanyId($request->input('company_id'));
         $request->merge([
             'company_id' => $normalizedCompanyId,
@@ -199,7 +210,7 @@ class DashboardController extends Controller
 
     public function checkoutReceipt(Request $request, Transaction $transaction): JsonResponse
     {
-        $userId = $request->user()->id;
+        $userId = (int) $request->user()->getAuthIdentifier();
         $manualDefaultVatRate = 21.0;
 
         $validated = $request->validate([
@@ -281,7 +292,6 @@ class DashboardController extends Controller
         $total = $subtotal;
 
         DB::transaction(function () use (
-            $request,
             $transaction,
             $validated,
             $normalizedItems,
@@ -290,7 +300,8 @@ class DashboardController extends Controller
             $adjustmentType,
             $adjustmentPercent,
             $adjustmentAmount,
-            $total
+            $total,
+            $userId
         ) {
             $transaction->transactionItems()->delete();
 
@@ -299,7 +310,7 @@ class DashboardController extends Controller
 
                 if (!$productId) {
                     $product = Product::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $userId,
                         'name' => $item['product_name'],
                         'ean' => null,
                         'vat_rate' => $item['vat_rate'] ?? 0,
@@ -349,7 +360,7 @@ class DashboardController extends Controller
             ], 422);
         }
 
-        $userId = $request->user()->id;
+        $userId = (int) $request->user()->getAuthIdentifier();
 
         $transaction->delete();
 

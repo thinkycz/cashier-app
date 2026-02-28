@@ -10,6 +10,13 @@ import { startOfflineSyncEngine } from '@/offline/syncEngine';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+window.addEventListener('unhandledrejection', (event) => {
+    const message = event?.reason?.message || String(event?.reason || '');
+    if (message.includes('No checkout popup config found')) {
+        event.preventDefault();
+    }
+});
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) =>
@@ -22,7 +29,12 @@ createInertiaApp({
             .use(plugin)
             .use(ZiggyVue)
             .use(createPinia());
-            
+
+        const disableVueDevtools = String(import.meta.env.VITE_DISABLE_VUE_DEVTOOLS ?? 'true') !== 'false';
+        if (disableVueDevtools) {
+            app.config.devtools = false;
+        }
+
         return app.mount(el);
     },
     progress: {

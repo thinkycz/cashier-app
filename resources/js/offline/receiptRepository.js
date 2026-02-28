@@ -87,7 +87,7 @@ export async function listPendingSyncReceipts() {
     return receipts;
 }
 
-export async function completeLocalReceipt(receiptId, payload) {
+export async function completeLocalReceipt(receiptId, payload = {}) {
     const now = new Date().toISOString();
     const existing = await getFromStore('receipts', receiptId);
 
@@ -97,7 +97,7 @@ export async function completeLocalReceipt(receiptId, payload) {
 
     const completed = {
         ...existing,
-        ...payload,
+        ...(payload ?? {}),
         state: 'completed',
         sync_status: 'pending',
         completed_at: now,
