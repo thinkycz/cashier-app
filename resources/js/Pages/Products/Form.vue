@@ -6,8 +6,10 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+
+const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
 const props = defineProps({
     mode: {
@@ -47,6 +49,10 @@ const submitLabel = computed(() => {
 });
 
 const submit = () => {
+    if (!isVatPayer.value) {
+        form.vat_rate = 0;
+    }
+
     if (isEdit.value) {
         form.put(route('products.update', props.product.id));
         return;
@@ -128,8 +134,7 @@ const submit = () => {
                                 <InputError class="mt-1.5" :message="form.errors.ean" />
                             </div>
 
-                            <div>
-                                <InputLabel value="Status" />
+                            <div class="col-span-full">
                                 <label class="inline-flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700">
                                     <Checkbox
                                         id="is_active"
@@ -148,7 +153,7 @@ const submit = () => {
                             <h3 class="text-base font-semibold text-slate-800">Pricing</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-                            <div>
+                            <div :class="isVatPayer ? '' : 'md:col-span-2'">
                                 <InputLabel for="price" value="Price (Kc) *" />
                                 <div class="relative">
                                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Kc</span>
@@ -167,7 +172,7 @@ const submit = () => {
                                 <InputError class="mt-1.5" :message="form.errors.price" />
                             </div>
 
-                            <div>
+                            <div v-if="isVatPayer">
                                 <InputLabel for="vat_rate" value="VAT Rate *" />
                                 <SelectInput
                                     id="vat_rate"

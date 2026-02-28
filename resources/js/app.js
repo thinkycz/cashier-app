@@ -12,7 +12,13 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 window.addEventListener('unhandledrejection', (event) => {
     const message = event?.reason?.message || String(event?.reason || '');
-    if (message.includes('No checkout popup config found')) {
+    const stack = event?.reason?.stack || '';
+
+    if (
+        message.includes('No checkout popup config found') ||
+        (message.includes("reading 'payload'") && stack.includes('core.js')) ||
+        (message.includes('reading "payload"') && stack.includes('core.js'))
+    ) {
         event.preventDefault();
     }
 });
@@ -47,7 +53,7 @@ const offlineReceiptsEnabled = String(import.meta.env.VITE_OFFLINE_RECEIPTS_ENAB
 if (offlineReceiptsEnabled) {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('/sw.js').catch(() => { });
         });
     }
 

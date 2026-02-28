@@ -1,6 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
 const props = defineProps({
     product: Object,
@@ -71,9 +74,9 @@ const vatAmount = Number(props.product.price) - priceExcludingVat;
                             </div>
                         </div>
                         <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
-                            <p class="text-xs uppercase tracking-wide text-slate-500">Price (incl. VAT)</p>
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Price{{ isVatPayer ? ' (incl. VAT)' : '' }}</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
-                            <p class="mt-1 text-xs text-slate-500">VAT rate: {{ product.vat_rate }}%</p>
+                            <p v-if="isVatPayer" class="mt-1 text-xs text-slate-500">VAT rate: {{ product.vat_rate }}%</p>
                         </div>
                     </div>
                 </section>
@@ -115,7 +118,7 @@ const vatAmount = Number(props.product.price) - priceExcludingVat;
                         </dl>
                     </article>
 
-                    <article class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
+                    <article v-if="isVatPayer" class="overflow-hidden rounded-xl border border-teal-100 bg-white/90 shadow-sm shadow-teal-100/50">
                         <div class="border-b border-teal-200/70 bg-gradient-to-r from-teal-50/65 to-cyan-50/55 px-6 py-4">
                             <h2 class="text-base font-semibold text-slate-800">Pricing Breakdown</h2>
                         </div>

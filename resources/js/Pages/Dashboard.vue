@@ -19,6 +19,8 @@ import {
 import { runSync } from '@/offline/syncEngine';
 import axios from 'axios';
 
+const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
+
 const cart = useCartStore();
 const DEFAULT_MANUAL_VAT_RATE = 21;
 const PRODUCTS_PER_PAGE = 30;
@@ -226,6 +228,11 @@ const addToCart = (product) => {
     selectManualProduct(product);
     manualPackages.value = 1;
     manualQuantity.value = 1;
+    if (!isVatPayer.value) {
+        // Find if this is an existing product or not, but it's passed here
+        // If it's passed here and not a VAT payer, set it
+        // Or leave it since the backend might ignore it
+    }
     productNameInputRef.value?.focus();
     packagesInputRef.value?.focus();
 };
@@ -322,7 +329,9 @@ const applyEditItem = () => {
     const normalizedPackages = clampPositiveInteger(editItemForm.value.packages);
     const normalizedQuantity = clampPositiveInteger(editItemForm.value.quantity);
     const normalizedBasePrice = clampNonNegativeDecimal(editItemForm.value.basePrice);
-    const normalizedVatRate = clampNonNegativeDecimal(editItemForm.value.vatRate);
+    const normalizedVatRate = isVatPayer.value 
+        ? clampNonNegativeDecimal(editItemForm.value.vatRate) 
+        : 0;
 
     editItemForm.value.packages = normalizedPackages;
     editItemForm.value.quantity = normalizedQuantity;
@@ -1317,12 +1326,12 @@ const buildOfflinePrintBody = (receipt, supplier) => {
                     ${item.packages} x ${item.quantity} x ${formatPrice(item.unit_price)}
                 </td>
                 <td></td>
-                <td style="padding:0 .25rem .375rem .25rem;text-align:right;color:rgb(71 85 105);">${formatPreviewVatLabel(item.vat_rate)}</td>
+                ${isVatPayer.value ? `<td style="padding:0 .25rem .375rem .25rem;text-align:right;color:rgb(71 85 105);">${formatPreviewVatLabel(item.vat_rate)}</td>` : ''}
                 <td style="padding:0 .25rem .375rem .25rem;text-align:right;font-weight:500;color:rgb(15 23 42);">${formatPrice(item.total)}</td>
             </tr>`;
         }).join('');
 
-        const vatRows = receipt.vat_rates.map((vatLabel) => {
+        const vatRows = isVatPayer.value ? receipt.vat_rates.map((vatLabel) => {
             const vatData = receipt.vat_summary[vatLabel] || { base: 0, vat: 0, total: 0 };
             return `
             <tr>
@@ -1337,7 +1346,7 @@ const buildOfflinePrintBody = (receipt, supplier) => {
                 <td colspan="2" style="padding:.25rem .25rem;color:rgb(51 65 85);">Celkem ${vatLabel}</td>
                 <td colspan="2" style="padding:.25rem .25rem;text-align:right;font-weight:500;color:rgb(30 41 59);">${formatPrice(vatData.total)}</td>
             </tr>`;
-        }).join('');
+        }).join('') : '';
 
         return `
         <thead style="border-bottom:1px solid rgb(15 118 110);">
@@ -1352,16 +1361,17 @@ const buildOfflinePrintBody = (receipt, supplier) => {
             </tr>
             <tr style="background:rgb(248 250 252);">
                 <td colspan="2" style="padding:.375rem .25rem;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Polozka</td>
-                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">DPH</td>
-                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem s DPH</td>
+                ${isVatPayer.value ? '<td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">DPH</td>' : ''}
+                <td style="padding:.375rem .25rem;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.025em;color:rgb(51 65 85);">Celkem${isVatPayer.value ? ' s DPH' : ''}</td>
             </tr>
         </thead>
         <tbody>
             ${itemRows}
+            ${isVatPayer.value ? `
             <tr style="border-top:2px solid rgb(15 118 110);">
                 <td colspan="100%" style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(17 94 89);">DPH rekapitulace</td>
             </tr>
-            ${vatRows}
+            ${vatRows}` : ''}
             <tr style="border-top:2px solid rgb(15 118 110);border-bottom:2px solid rgb(15 118 110);background:rgb(240 253 250 / .7);">
                 <td style="padding:.375rem .25rem;text-align:left;font-weight:600;color:rgb(19 78 74);">Celkem k uhrade</td>
                 <td colspan="3" style="padding:.375rem .25rem;text-align:right;font-size:1rem;font-weight:600;color:rgb(19 78 74);">${formatPrice(receipt.total)}</td>
@@ -2335,7 +2345,7 @@ onBeforeUnmount(() => {
                                         <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
                                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
                                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">EAN</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
+                                            <th v-if="isVatPayer" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
                                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Price</th>
                                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Action</th>
                                         </tr>
@@ -2351,14 +2361,14 @@ onBeforeUnmount(() => {
                                                 <p v-if="productSubtitle(product)" class="mt-0.5 text-xs text-slate-500">{{ productSubtitle(product) }}</p>
                                             </td>
                                             <td class="px-4 py-3 text-xs font-mono text-slate-600">{{ product.ean || '-' }}</td>
-                                            <td class="px-4 py-3">
+                                            <td v-if="isVatPayer" class="px-4 py-3">
                                                 <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
                                                     {{ formatVat(product.vat_rate) }}%
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-right">
                                                 <p class="text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
-                                                <p class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
+                                                <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
                                             </td>
                                             <td class="px-4 py-3 text-right">
                                                 <button
@@ -2394,7 +2404,7 @@ onBeforeUnmount(() => {
                                             <p class="text-slate-500">EAN</p>
                                             <p class="mt-1 font-mono">{{ product.ean || '-' }}</p>
                                         </div>
-                                        <div>
+                                        <div v-if="isVatPayer">
                                             <p class="text-slate-500">VAT</p>
                                             <p class="mt-1 font-medium">{{ formatVat(product.vat_rate) }}%</p>
                                         </div>
@@ -2449,7 +2459,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
+                        <div v-if="isVatPayer">
                             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Sazba DPH</label>
                             <input
                                 v-model.number="editItemForm.vatRate"
@@ -2459,7 +2469,7 @@ onBeforeUnmount(() => {
                                 class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             />
                         </div>
-                        <div>
+                        <div :class="isVatPayer ? '' : 'md:col-span-2'">
                             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-600">Cena za MJ</label>
                             <input
                                 v-model.number="editItemForm.basePrice"
@@ -2711,8 +2721,8 @@ onBeforeUnmount(() => {
                                 </tr>
                                 <tr class="bg-slate-50">
                                     <td class="px-1 py-1.5 font-semibold uppercase tracking-wide text-slate-700" colspan="2">Polozka</td>
-                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">DPH</td>
-                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">Celkem s DPH</td>
+                                    <td v-if="isVatPayer" class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">DPH</td>
+                                    <td class="px-1 py-1.5 text-right font-semibold uppercase tracking-wide text-slate-700">Celkem{{ isVatPayer ? ' s DPH' : '' }}</td>
                                 </tr>
                             </thead>
 
@@ -2741,14 +2751,15 @@ onBeforeUnmount(() => {
                                     </tr>
                                     <tr>
                                         <td class="px-1 pb-1.5 text-slate-700">{{ item.packages }} x {{ item.quantity }} x {{ formatPrice(item.unit_price) }}</td>
-                                        <td></td>
-                                        <td class="px-1 pb-1.5 text-right text-slate-600">{{ formatPreviewVatLabel(item.vat_rate) }}</td>
+                                        <td v-if="isVatPayer"></td>
+                                        <td v-if="isVatPayer" class="px-1 pb-1.5 text-right text-slate-600">{{ formatPreviewVatLabel(item.vat_rate) }}</td>
                                         <td class="px-1 pb-1.5 text-right font-medium text-slate-900">{{ formatPrice(item.total) }}</td>
                                     </tr>
                                 </template>
-                                <tr class="border-t-2 border-teal-700">
-                                    <td class="px-1 py-1.5 text-left font-semibold text-teal-800" colspan="100%">DPH rekapitulace</td>
-                                </tr>
+                                <template v-if="isVatPayer">
+                                    <tr class="border-t-2 border-teal-700">
+                                        <td class="px-1 py-1.5 text-left font-semibold text-teal-800" colspan="100%">DPH rekapitulace</td>
+                                    </tr>
                                 <template v-for="vatLabel in offlinePreviewReceipt.vat_rates" :key="vatLabel">
                                     <tr>
                                         <td class="px-1 py-1 text-slate-700" colspan="2">Zaklad DPH {{ vatLabel }}</td>
@@ -2763,9 +2774,10 @@ onBeforeUnmount(() => {
                                         <td class="px-1 py-1 text-right font-medium text-slate-800" colspan="2">{{ formatPrice(offlinePreviewReceipt.vat_summary[vatLabel]?.total || 0) }}</td>
                                     </tr>
                                 </template>
+                                </template>
                                 <tr class="border-y-2 border-teal-700 bg-teal-50/70">
                                     <td class="px-1 py-1.5 text-left font-semibold text-teal-900">Celkem k uhrade</td>
-                                    <td class="px-1 py-1.5 text-right text-base font-semibold text-teal-900" colspan="3">{{ formatPrice(offlinePreviewReceipt.total) }}</td>
+                                    <td class="px-1 py-1.5 text-right text-base font-semibold text-teal-900" :colspan="isVatPayer ? 3 : 1">{{ formatPrice(offlinePreviewReceipt.total) }}</td>
                                 </tr>
                             </tbody>
                         </table>

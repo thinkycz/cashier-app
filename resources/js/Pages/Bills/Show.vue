@@ -1,8 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+
+const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
 const props = defineProps({
     bill: Object,
@@ -228,7 +230,7 @@ const deleteBill = () => {
                         <div class="rounded-lg border border-teal-200/70 bg-gradient-to-br from-teal-50/70 to-cyan-50/60 p-4 text-right">
                             <p class="text-xs uppercase tracking-wide text-slate-500">Total</p>
                             <p class="mt-2 text-2xl font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
-                            <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
+                            <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
                         </div>
                     </div>
                 </section>
@@ -249,6 +251,7 @@ const deleteBill = () => {
                             Print Bill
                         </button>
                         <button
+                            v-if="isVatPayer"
                             type="button"
                             class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-cyan-700"
                             @click="openPrintPreviewModal('invoice')"
@@ -348,7 +351,7 @@ const deleteBill = () => {
                                     <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Packages</th>
                                     <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-teal-700/80">Qty</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Unit Price</th>
-                                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
+                                    <th v-if="isVatPayer" class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Total</th>
                                 </tr>
                             </thead>
@@ -372,16 +375,16 @@ const deleteBill = () => {
                                     <td class="px-5 py-4 text-center text-sm text-slate-700">{{ item.quantity }}</td>
                                     <td class="px-5 py-4 text-right">
                                         <p class="text-sm text-slate-700">{{ formatPrice(item.unit_price) }}</p>
-                                        <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
+                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
                                     </td>
-                                    <td class="px-5 py-4 text-right text-sm text-slate-700">
+                                    <td v-if="isVatPayer" class="px-5 py-4 text-right text-sm text-slate-700">
                                         <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
                                             {{ item.vat_rate }}%
                                         </span>
                                     </td>
                                     <td class="px-5 py-4 text-right">
                                         <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
-                                        <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                        <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -401,7 +404,7 @@ const deleteBill = () => {
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-semibold text-slate-900">{{ formatPrice(item.total) }}</p>
-                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.total, item.vat_rate)) }}</p>
                                 </div>
                             </div>
                             <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-slate-600">
@@ -421,12 +424,12 @@ const deleteBill = () => {
                                     <p class="text-slate-500">Qty</p>
                                     <p class="mt-1 font-medium">{{ item.quantity }}</p>
                                 </div>
-                                <div>
+                                <div :class="isVatPayer ? '' : 'col-span-3'">
                                     <p class="text-slate-500">Unit</p>
                                     <p class="mt-1 font-medium">{{ formatPrice(item.unit_price) }}</p>
-                                    <p class="mt-0.5 text-[11px] text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-[11px] text-slate-500">excl. VAT {{ formatPrice(priceExcludingVat(item.unit_price, item.vat_rate)) }}</p>
                                 </div>
-                                <div>
+                                <div v-if="isVatPayer">
                                     <p class="text-slate-500">VAT</p>
                                     <p class="mt-1">
                                         <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
@@ -449,7 +452,7 @@ const deleteBill = () => {
                                 <dt class="text-slate-500">Subtotal</dt>
                                 <dd class="text-right">
                                     <p class="font-medium text-slate-900">{{ formatPrice(bill.subtotal) }}</p>
-                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billSubtotalExcludingVat()) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billSubtotalExcludingVat()) }}</p>
                                 </dd>
                             </div>
                             <div v-if="hasAdjustment()" class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -474,7 +477,7 @@ const deleteBill = () => {
                                 <dt class="text-base font-semibold text-slate-900">Total</dt>
                                 <dd class="text-right">
                                     <p class="text-base font-semibold text-slate-900">{{ formatPrice(bill.total) }}</p>
-                                    <p class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
+                                    <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">excl. VAT {{ formatPrice(billTotalExcludingVat()) }}</p>
                                 </dd>
                             </div>
                         </dl>

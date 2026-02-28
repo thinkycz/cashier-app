@@ -1,8 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+
+const isVatPayer = computed(() => usePage().props.auth.user.is_vat_payer);
 
 const props = defineProps({
     products: Object,
@@ -99,7 +101,7 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                     <tr class="bg-gradient-to-r from-teal-50/70 to-cyan-50/60">
                                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Product</th>
                                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">EAN</th>
-                                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
+                                        <th v-if="isVatPayer" class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">VAT</th>
                                         <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Price</th>
                                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-teal-700/80">Status</th>
                                         <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-teal-700/80">Actions</th>
@@ -120,12 +122,12 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                                 {{ product.ean || '-' }}
                                             </span>
                                         </td>
-                                        <td class="px-5 py-4 align-top">
+                                        <td v-if="isVatPayer" class="px-5 py-4 align-top">
                                             <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{{ product.vat_rate }}%</span>
                                         </td>
                                         <td class="px-5 py-4 text-right align-top">
                                             <p class="text-sm font-semibold text-slate-900">{{ formatPrice(product.price) }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
+                                            <p v-if="isVatPayer" class="mt-0.5 text-xs text-slate-500">incl. VAT</p>
                                         </td>
                                         <td class="px-5 py-4 align-top">
                                             <span
@@ -192,11 +194,11 @@ const isEmpty = computed(() => props.products.data.length === 0);
                                     </span>
                                 </div>
                                 <div class="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600">
-                                    <div>
+                                    <div v-if="isVatPayer">
                                         <p class="text-slate-500">VAT</p>
                                         <p class="mt-1 font-medium">{{ product.vat_rate }}%</p>
                                     </div>
-                                    <div>
+                                    <div :class="isVatPayer ? '' : 'col-span-2'">
                                         <p class="text-slate-500">Price</p>
                                         <p class="mt-1 font-medium text-slate-900">{{ formatPrice(product.price) }}</p>
                                     </div>

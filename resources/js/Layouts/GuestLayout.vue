@@ -1,6 +1,26 @@
 <script setup>
 import BrandLogo from '@/Components/BrandLogo.vue';
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const props = defineProps({
+    maxWidth: {
+        type: String,
+        default: 'md',
+    },
+});
+
+const maxWidthClass = computed(() => {
+    return {
+        sm: 'sm:max-w-sm',
+        md: 'sm:max-w-md',
+        lg: 'sm:max-w-lg',
+        xl: 'sm:max-w-xl',
+        '2xl': 'sm:max-w-2xl',
+        '4xl': 'sm:max-w-4xl',
+        '5xl': 'sm:max-w-5xl',
+    }[props.maxWidth];
+});
 </script>
 
 <template>
@@ -12,7 +32,7 @@ import { Link } from '@inertiajs/vue3';
             <div class="absolute top-14 right-8 h-56 w-56 rounded-full bg-teal-300/30 blur-3xl"></div>
         </div>
 
-        <div class="w-full px-4 sm:max-w-md sm:px-0">
+        <div class="w-full px-4 sm:px-0" :class="maxWidthClass">
             <div class="flex justify-center">
                 <Link href="/" class="inline-flex justify-center">
                     <BrandLogo class="mx-auto block" />

@@ -68,7 +68,7 @@ const userInitial = computed(() => {
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
-                        class="max-w-xl"
+                        class="max-w-4xl"
                     />
                 </div>
 
