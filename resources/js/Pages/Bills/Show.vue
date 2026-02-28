@@ -22,7 +22,9 @@ const currentPreviewLabel = computed(() => {
     if (selectedPrintDocument.value === 'invoice') return 'VAT invoice';
     if (selectedPrintDocument.value === 'non_vat_invoice') return 'Non-VAT Invoice';
     if (selectedPrintDocument.value === 'delivery_note') return 'Delivery Note';
-    return 'Bill';
+    if (selectedPrintDocument.value === 'non_vat_bill') return 'Non-VAT bill';
+    if (selectedPrintDocument.value === 'quotation') return 'Quotation';
+    return 'VAT bill';
 });
 
 const customerDisplayName = (customer) => {
@@ -248,7 +250,17 @@ const deleteBill = () => {
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
                             </svg>
-                            Print Bill
+                            Print VAT bill
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-lime-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-lime-700"
+                            @click="openPrintPreviewModal('non_vat_bill')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m10 0H7m10 0v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-8V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+                            </svg>
+                            Print Non-VAT bill
                         </button>
                         <button
                             v-if="isVatPayer"
@@ -280,6 +292,16 @@ const deleteBill = () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4m4 4h8" />
                             </svg>
                             Print Delivery Note
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-px hover:bg-amber-700"
+                            @click="openPrintPreviewModal('quotation')"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m-7 12h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            Print Quotation
                         </button>
                     </div>
                 </section>

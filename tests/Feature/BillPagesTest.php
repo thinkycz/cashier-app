@@ -44,11 +44,12 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', ['cash', 'card', 'order'])
-                ->has('transactions.data', 1)
-                ->where('transactions.data.0.id', $ownTransaction->id)
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', ['cash', 'card', 'order'])
+                    ->has('transactions.data', 1)
+                    ->where('transactions.data.0.id', $ownTransaction->id)
             );
     }
 
@@ -68,10 +69,11 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Show')
-                ->where('bill.id', $transaction->id)
-                ->where('bill.customer.id', $customer->id)
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Show')
+                    ->where('bill.id', $transaction->id)
+                    ->where('bill.customer.id', $customer->id)
             );
     }
 
@@ -88,12 +90,13 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', ['cash'])
-                ->has('transactions.data', 1)
-                ->where('transactions.data.0.id', $cashTransaction->id)
-                ->where('transactions.data.0.status', 'cash')
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', ['cash'])
+                    ->has('transactions.data', 1)
+                    ->where('transactions.data.0.id', $cashTransaction->id)
+                    ->where('transactions.data.0.status', 'cash')
             );
     }
 
@@ -112,15 +115,16 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', ['cash', 'card', 'order'])
-                ->has('transactions.data', 3)
-                ->where('transactions.data', function ($transactions) {
-                    $statuses = collect($transactions)->pluck('status')->sort()->values()->all();
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', ['cash', 'card', 'order'])
+                    ->has('transactions.data', 3)
+                    ->where('transactions.data', function ($transactions) {
+                        $statuses = collect($transactions)->pluck('status')->sort()->values()->all();
 
-                    return $statuses === ['card', 'cash', 'order'];
-                })
+                        return $statuses === ['card', 'cash', 'order'];
+                    })
             );
     }
 
@@ -138,15 +142,16 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', ['cash', 'card'])
-                ->has('transactions.data', 2)
-                ->where('transactions.data', function ($transactions) use ($cashTransaction, $cardTransaction) {
-                    $ids = collect($transactions)->pluck('id')->sort()->values()->all();
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', ['cash', 'card'])
+                    ->has('transactions.data', 2)
+                    ->where('transactions.data', function ($transactions) use ($cashTransaction, $cardTransaction) {
+                        $ids = collect($transactions)->pluck('id')->sort()->values()->all();
 
-                    return $ids === collect([$cashTransaction->id, $cardTransaction->id])->sort()->values()->all();
-                })
+                        return $ids === collect([$cashTransaction->id, $cardTransaction->id])->sort()->values()->all();
+                    })
             );
     }
 
@@ -159,14 +164,15 @@ class BillPagesTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(route('bills.index').'?status[]=');
+            ->get(route('bills.index') . '?status[]=');
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', [])
-                ->has('transactions.data', 0)
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', [])
+                    ->has('transactions.data', 0)
             );
     }
 
@@ -183,12 +189,13 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Index')
-                ->where('filters.status', ['cash'])
-                ->has('transactions.data', 1)
-                ->where('transactions.data.0.id', $cashTransaction->id)
-                ->where('transactions.data.0.status', 'cash')
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Index')
+                    ->where('filters.status', ['cash'])
+                    ->has('transactions.data', 1)
+                    ->where('transactions.data.0.id', $cashTransaction->id)
+                    ->where('transactions.data.0.status', 'cash')
             );
     }
 
@@ -208,11 +215,12 @@ class BillPagesTest extends TestCase
         $this->actingAs($user)
             ->get(route('bills.show', $transaction))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Bills/Show')
-                ->where('bill.adjustment_type', 'discount')
-                ->where('bill.adjustment_percent', '10.00')
-                ->where('bill.adjustment_amount', '2.00')
+            ->assertInertia(
+                fn(Assert $page) => $page
+                    ->component('Bills/Show')
+                    ->where('bill.adjustment_type', 'discount')
+                    ->where('bill.adjustment_percent', '10.00')
+                    ->where('bill.adjustment_amount', '2.00')
             );
     }
 
@@ -236,6 +244,7 @@ class BillPagesTest extends TestCase
             'street' => 'Main 123',
             'city' => 'Praha',
             'zip' => '11000',
+            'is_vat_payer' => true,
         ]);
         $transaction = $this->createTransaction($user, ['status' => 'cash']);
         $product = $this->createProduct($user);
@@ -245,11 +254,27 @@ class BillPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertViewIs('bills.bill')
+            ->assertViewIs('bills.vat_bill')
             ->assertSee('Účtenka č.', false)
             ->assertSee('Test Supplier s.r.o.', false)
             ->assertSee('IČ: 12345678', false)
             ->assertSee('DIČ: CZ12345678', false);
+    }
+
+    public function test_bills_preview_uses_non_vat_bill_template_for_non_vat_payer(): void
+    {
+        $user = $this->createUser([
+            'is_vat_payer' => false,
+        ]);
+        $transaction = $this->createTransaction($user, ['status' => 'cash']);
+        $product = $this->createProduct($user);
+        $this->createTransactionItem($transaction, $product);
+
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction));
+
+        $response
+            ->assertOk()
+            ->assertViewIs('bills.non_vat_bill');
     }
 
     public function test_bills_preview_uses_quotation_template_for_order_status(): void
@@ -281,7 +306,7 @@ class BillPagesTest extends TestCase
         $product = $this->createProduct($user);
         $this->createTransactionItem($transaction, $product);
 
-        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=invoice');
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=invoice');
 
         $response
             ->assertOk()
@@ -306,7 +331,7 @@ class BillPagesTest extends TestCase
         $product = $this->createProduct($user, ['name' => 'Programátorské služby']);
         $this->createTransactionItem($transaction, $product, ['total' => 70000, 'unit_price' => 70000, 'quantity' => 1]);
 
-        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=non_vat_invoice');
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=non_vat_invoice');
 
         $response
             ->assertOk()
@@ -322,7 +347,7 @@ class BillPagesTest extends TestCase
         $product = $this->createProduct($user);
         $this->createTransactionItem($transaction, $product);
 
-        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false).'?document=delivery_note');
+        $response = $this->actingAs($user)->get(route('bills.preview', $transaction, false) . '?document=delivery_note');
 
         $response
             ->assertOk()

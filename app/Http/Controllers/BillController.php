@@ -13,7 +13,7 @@ class BillController extends Controller
 
     private const DEFAULT_STATUSES = ['cash', 'card', 'order'];
 
-    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'non_vat_invoice', 'delivery_note'];
+    private const ALLOWED_DOCUMENTS = ['bill', 'invoice', 'non_vat_invoice', 'delivery_note', 'non_vat_bill', 'quotation'];
 
     /**
      * Display a listing of the resource.
@@ -122,7 +122,7 @@ class BillController extends Controller
                     'product' => $item->product,
                     'packs' => (int) ($item->packages ?: 1),
                     'quantity' => (int) $item->quantity,
-                    'vat_rate' => number_format((float) $item->vat_rate, 2, ',', ' ').' %',
+                    'vat_rate' => number_format((float) $item->vat_rate, 2, ',', ' ') . ' %',
                     'calculated_unit_price' => (float) $item->unit_price,
                     'total_price' => (float) $item->total,
                     'vat_rate_value' => (float) $item->vat_rate,
@@ -166,7 +166,9 @@ class BillController extends Controller
             'invoice' => 'documents.vat_invoice',
             'non_vat_invoice' => 'documents.non_vat_invoice',
             'delivery_note' => 'documents.delivery_note',
-            default => $bill->status === 'order' ? 'bills.quotation' : 'bills.bill',
+            'non_vat_bill' => 'bills.non_vat_bill',
+            'quotation' => 'bills.quotation',
+            default => $bill->status === 'order' ? 'bills.quotation' : ($request->user()->is_vat_payer ? 'bills.vat_bill' : 'bills.non_vat_bill'),
         };
 
         return view($view, [
@@ -183,7 +185,7 @@ class BillController extends Controller
 
         foreach ($billItems as $item) {
             $rate = (float) $item->vat_rate_value;
-            $label = number_format($rate, 2, ',', ' ').' %';
+            $label = number_format($rate, 2, ',', ' ') . ' %';
             $totalInclVat = (float) $item->total_price;
             $divider = 1 + ($rate / 100);
             $totalExclVat = $divider > 0 ? ($totalInclVat / $divider) : $totalInclVat;
@@ -219,10 +221,10 @@ class BillController extends Controller
         }
 
         return collect($rawStatuses)
-            ->filter(fn ($status) => is_string($status))
-            ->map(fn (string $status) => trim($status))
-            ->filter(fn (string $status) => $status !== '')
-            ->filter(fn (string $status) => in_array($status, self::ALLOWED_STATUSES, true))
+            ->filter(fn($status) => is_string($status))
+            ->map(fn(string $status) => trim($status))
+            ->filter(fn(string $status) => $status !== '')
+            ->filter(fn(string $status) => in_array($status, self::ALLOWED_STATUSES, true))
             ->unique()
             ->values()
             ->all();
