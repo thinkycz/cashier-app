@@ -236,7 +236,7 @@ const addToCart = (product) => {
         // Or leave it since the backend might ignore it
     }
     productNameInputRef.value?.focus();
-    packagesInputRef.value?.focus();
+    focusPackagesInput();
 };
 
 const canAddManualItem = computed(() => {
@@ -429,15 +429,24 @@ const canSubmitCheckout = computed(() => {
 });
 
 const focusPackagesInput = () => {
-    packagesInputRef.value?.focus();
+    nextTick(() => {
+        packagesInputRef.value?.focus();
+        packagesInputRef.value?.select();
+    });
 };
 
 const focusQuantityInput = () => {
-    quantityInputRef.value?.focus();
+    nextTick(() => {
+        quantityInputRef.value?.focus();
+        quantityInputRef.value?.select();
+    });
 };
 
 const focusPriceInput = () => {
-    priceInputRef.value?.focus();
+    nextTick(() => {
+        priceInputRef.value?.focus();
+        priceInputRef.value?.select();
+    });
 };
 
 const formatPrice = (price) => {
@@ -886,6 +895,7 @@ const onManualProductKeydown = (event) => {
         if (hasHighlightedSuggestion) {
             event.preventDefault();
             selectManualProduct(manualProductSuggestions.value[highlightedSuggestionIndex.value]);
+            focusPackagesInput();
             return;
         }
 
@@ -1983,7 +1993,7 @@ onBeforeUnmount(() => {
                                         :aria-selected="highlightedSuggestionIndex === suggestionIndex"
                                         class="flex w-full items-start justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left last:border-b-0"
                                         :class="highlightedSuggestionIndex === suggestionIndex ? 'bg-teal-50' : 'bg-white hover:bg-slate-50'"
-                                        @mousedown.prevent="selectManualProduct(product)"
+                                        @mousedown.prevent="selectManualProduct(product); focusPackagesInput()"
                                         @mousemove="highlightedSuggestionIndex = suggestionIndex"
                                     >
                                         <div class="min-w-0">
